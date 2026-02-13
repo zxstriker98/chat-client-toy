@@ -1,10 +1,10 @@
-from client.OpenAIClient import OpenAIClient
+from client.OpenAIClient import AsyncOpenAIClient
 from tools.tools import registry
 import asyncio
 from dotenv import load_dotenv
 
 async def main():
-    client: OpenAIClient = OpenAIClient(
+    client: AsyncOpenAIClient = AsyncOpenAIClient(
         model="gpt-5.2",
         instructions="you are a generic chat-bot with access to tools",
         tool_registry=registry
@@ -13,7 +13,7 @@ async def main():
         query: str = await asyncio.to_thread(input, "> ")
         if query.lower() == "exit":
             return
-        client.generate_response(query=query)
+        await client.generate_response(query=query)
 
 
 
