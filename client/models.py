@@ -1,10 +1,11 @@
+from __future__ import annotations
 from pydantic import BaseModel
-from typing import Literal
+from typing import Any, Literal, Union
 
 
 class Conversation(BaseModel):
     role: Literal["user", "assistant"]
-    content: str
+    content: Union[str, list[Any]]
 
 
 class ConversationHistory(BaseModel):

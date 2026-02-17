@@ -14,7 +14,9 @@ class BaseLLMClient(BaseModel, ABC):
 
     client: Any = None
     model: str = ""
-    conversation_history: ConversationHistory = Field(default_factory= lambda: ConversationHistory(conversations=[]))
+    conversation_history: ConversationHistory = Field(
+        default_factory=lambda: ConversationHistory(conversations=[])
+    )
     instructions: str = ""
     tool_registry: ToolRegistry = registry
 
@@ -50,7 +52,9 @@ class BaseLLMClient(BaseModel, ABC):
         """Execute a single tool call and record it in conversation history."""
         ...
 
-    def __init__(self, model: str, instructions: str, tool_registry: ToolRegistry = registry) -> None:
+    def __init__(
+        self, model: str, instructions: str, tool_registry: ToolRegistry = registry
+    ) -> None:
         super().__init__(
             client=None,
             model=model,
@@ -92,7 +96,9 @@ class AsyncBaseLLMClient(BaseModel, ABC):
 
     client: Any = None
     model: str = ""
-    conversation_history: ConversationHistory = Field(default_factory= lambda: ConversationHistory(conversations=[]))
+    conversation_history: ConversationHistory = Field(
+        default_factory=lambda: ConversationHistory(conversations=[])
+    )
     instructions: str = ""
     tool_registry: ToolRegistry = registry
 
@@ -128,7 +134,9 @@ class AsyncBaseLLMClient(BaseModel, ABC):
         """Execute a single tool call and record it in conversation history."""
         ...
 
-    def __init__(self, model: str, instructions: str, tool_registry: ToolRegistry = registry) -> None:
+    def __init__(
+        self, model: str, instructions: str, tool_registry: ToolRegistry = registry
+    ) -> None:
         super().__init__(
             client=None,
             model=model,

@@ -1,17 +1,17 @@
-from client.OpenAIClient import AsyncOpenAIClient
+from client.AnthropicClient import AnthropicClient
 import asyncio
 from dotenv import load_dotenv
 
 async def main():
-    client: AsyncOpenAIClient = AsyncOpenAIClient(
-        model="gpt-5.2",
+    client: AnthropicClient = AnthropicClient(
+        model="claude-opus-4-20250514",
         instructions="you are a generic chat-bot with access to tools",
     )
     while True:
         query: str = await asyncio.to_thread(input, "> ")
         if query.lower() == "exit":
             return
-        await client.generate_response(query=query)
+        client.generate_response(query=query)
 
 
 
