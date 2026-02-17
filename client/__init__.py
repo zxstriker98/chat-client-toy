@@ -3,6 +3,7 @@ from client.base import BaseLLMClient, AsyncBaseLLMClient
 from client.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatClient
 from client.OpenAIClient import OpenAIClient, AsyncOpenAIClient
 from client.OllamaClient import OllamaClient, AsyncOllamaClient
+from client.AnthropicClient import AnthropicClient, AsyncAnthropicClient
 
 __all__ = [
     "Conversation",
@@ -15,4 +16,6 @@ __all__ = [
     "AsyncOpenAIClient",
     "OllamaClient",
     "AsyncOllamaClient",
+    "AnthropicClient",
+    "AsyncAnthropicClient",
 ]

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Any
 from tools.tools import ToolRegistry, registry
-from client.models import Conversation, ConversationHistory
+from client.models import ConversationHistory
 
 
 class BaseLLMClient(BaseModel, ABC):
