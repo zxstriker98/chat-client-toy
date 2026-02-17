@@ -46,3 +46,4 @@ def tool(name: str, description: str, param_model: type) -> Callable:
 # Import tool modules so their @tool decorators run and register
 import tools.readFile
 import tools.runBash
+import tools.webSearch
