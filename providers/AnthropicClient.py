@@ -1,8 +1,8 @@
 from typing import Any
-from client.base import BaseLLMClient, AsyncBaseLLMClient
+from providers.base import BaseLLMClient, AsyncBaseLLMClient
 from anthropic import Anthropic, AsyncAnthropic
 from anthropic.types import Message, ToolUseBlock
-from client.models import Conversation
+from providers.models import Conversation
 
 MAX_TOKENS: int = 4096
 

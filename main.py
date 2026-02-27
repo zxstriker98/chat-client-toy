@@ -1,9 +1,10 @@
-from client.AnthropicClient import AsyncAnthropicClient
+from providers import AsyncBaseLLMClient
 import asyncio
 from dotenv import load_dotenv
+from providers.ProviderFactory import ProviderFactory
 
 async def main():
-    client: AsyncAnthropicClient = AsyncAnthropicClient(
+    client: AsyncBaseLLMClient = ProviderFactory.from_model(
         model="claude-opus-4-20250514",
         instructions="you are a generic chat-bot with access to tools",
     )

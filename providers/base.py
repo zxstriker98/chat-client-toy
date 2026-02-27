@@ -2,14 +2,14 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Any
 from tools.tools import ToolRegistry, registry
-from client.models import ConversationHistory
+from providers.models import ConversationHistory
 
 
 class BaseLLMClient(BaseModel, ABC):
     """Abstract base class for synchronous LLM clients.
 
     Provider-agnostic — subclasses implement all provider-specific logic
-    (client creation, API calls, tool formatting, response parsing).
+    (providers creation, API calls, tool formatting, response parsing).
     """
 
     client: Any = None
@@ -24,7 +24,7 @@ class BaseLLMClient(BaseModel, ABC):
 
     @abstractmethod
     def _create_client(self) -> Any:
-        """Create and return the provider-specific client instance."""
+        """Create and return the provider-specific providers instance."""
         ...
 
     @abstractmethod
@@ -62,7 +62,7 @@ class BaseLLMClient(BaseModel, ABC):
             conversation_history=ConversationHistory(conversations=[]),
             tool_registry=tool_registry,
         )
-        object.__setattr__(self, "client", self._create_client())
+        object.__setattr__(self, "providers", self._create_client())
 
     def generate_response(self, query: str) -> str:
         self.conversation_history.append_user_query(query)
@@ -91,7 +91,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
     """Abstract base class for asynchronous LLM clients.
 
     Provider-agnostic — subclasses implement all provider-specific logic
-    (client creation, API calls, tool formatting, response parsing).
+    (providers creation, API calls, tool formatting, response parsing).
     """
 
     client: Any = None
@@ -106,7 +106,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
 
     @abstractmethod
     def _create_client(self) -> Any:
-        """Create and return the provider-specific async client instance."""
+        """Create and return the provider-specific async providers instance."""
         ...
 
     @abstractmethod
@@ -144,7 +144,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             conversation_history=ConversationHistory(conversations=[]),
             tool_registry=tool_registry,
         )
-        object.__setattr__(self, "client", self._create_client())
+        object.__setattr__(self, "providers", self._create_client())
 
     async def generate_response(self, query: str) -> str:
         self.conversation_history.append_user_query(query)

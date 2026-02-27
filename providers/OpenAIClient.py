@@ -1,16 +1,16 @@
 from openai import OpenAI, AsyncOpenAI
-from client.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatClient
+from providers.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatClient
 
 
 class OpenAIClient(OpenAICompatClient):
-    """Synchronous OpenAI client."""
+    """Synchronous OpenAI providers."""
 
     def _create_client(self) -> OpenAI:
         return OpenAI()
 
 
 class AsyncOpenAIClient(AsyncOpenAICompatClient):
-    """Asynchronous OpenAI client."""
+    """Asynchronous OpenAI providers."""
 
     def _create_client(self) -> AsyncOpenAI:
         return AsyncOpenAI()

@@ -6,8 +6,8 @@ can extend these classes and only override _create_client().
 
 from openai.types.responses import Response, FunctionToolParam, ResponseFunctionToolCall
 from typing import Any
-from client.base import BaseLLMClient, AsyncBaseLLMClient
-from client.models import Conversation
+from providers.base import BaseLLMClient, AsyncBaseLLMClient
+from providers.models import Conversation
 
 
 class OpenAICompatClient(BaseLLMClient):
