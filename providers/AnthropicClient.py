@@ -1,5 +1,8 @@
 import json
 from typing import Any
+
+import anthropic
+from providers.errors.ProviderError import AuthenticationError, RateLimitExceededError, ModelNotFoundError, ConnectionError, ProviderApiError
 from providers.base import BaseLLMClient, AsyncBaseLLMClient
 from anthropic import Anthropic, AsyncAnthropic
 from anthropic.types import Message, ToolUseBlock
@@ -36,7 +39,18 @@ class AnthropicClient(BaseLLMClient):
         ]
 
     def _call_api(self, **kwargs: Any) -> Message:
-        return self.client.messages.create(**kwargs)
+        try:
+            return self.client.messages.create(**kwargs)
+        except anthropic.AuthenticationError as e:
+            raise AuthenticationError("Invalid API key", provider="anthropic", original_error=e)
+        except anthropic.RateLimitError as e:
+            raise RateLimitExceededError("Rate limit exceeded", provider="anthropic", original_error=e)
+        except anthropic.NotFoundError as e:
+            raise ModelNotFoundError(f"Model not found: {self.model}", provider="anthropic", original_error=e)
+        except anthropic.APIConnectionError as e:
+            raise ConnectionError("Cannot reach Anthropic API", provider="anthropic", original_error=e)
+        except anthropic.APIError as e:
+            raise ProviderApiError(str(e), provider="anthropic", original_error=e)
 
     def _extract_tool_calls(self, response: Message) -> list[ToolUseBlock]:
         return [block for block in response.content if block.type == "tool_use"]
@@ -100,7 +114,18 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         ]
 
     async def _call_api(self, **kwargs: Any) -> Message:
-        return await self.client.messages.create(**kwargs)
+        try:
+            return await self.client.messages.create(**kwargs)
+        except anthropic.AuthenticationError as e:
+            raise AuthenticationError("Invalid API key", provider="anthropic", original_error=e)
+        except anthropic.RateLimitError as e:
+            raise RateLimitExceededError("Rate limit exceeded", provider="anthropic", original_error=e)
+        except anthropic.NotFoundError as e:
+            raise ModelNotFoundError(f"Model not found: {self.model}", provider="anthropic", original_error=e)
+        except anthropic.APIConnectionError as e:
+            raise ConnectionError("Cannot reach Anthropic API", provider="anthropic", original_error=e)
+        except anthropic.APIError as e:
+            raise ProviderApiError(str(e), provider="anthropic", original_error=e)
 
     def _extract_tool_calls(self, response: Message) -> list[ToolUseBlock]:
         return [block for block in response.content if block.type == "tool_use"]
