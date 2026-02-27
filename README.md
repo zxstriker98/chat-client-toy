@@ -1,153 +1,132 @@
 # Chat Client Toy
 
-A minimal, extensible chat client that demonstrates how to call Anthropic, OpenAI, or a local Ollama instance with tool support. The project is intentionally small so you can quickly experiment with tool calling, conversation history, and different model backends.
+A multi-provider LLM chat client with tool-calling support. One interface, many LLMs.
 
-## Features
-
-- Simple async REPL chat loop via `main.py`.
-- Anthropic, OpenAI, and Ollama clients with the same interface (sync and async variants).
-- Tool registry and decorators for easy tool registration.
-- Example tools for reading files and running shell commands.
-
-## Project Layout
+## Architecture
 
 ```
-.
-├── client/
-│   ├── AnthropicClient.py
-│   ├── OpenAIClient.py
-│   ├── OllamaClient.py
-│   ├── openai_compat_base.py
-│   ├── base.py
-│   └── models.py
-├── tools/
-│   ├── readFile.py
-│   ├── runBash.py
-│   ├── webSearch.py
-│   └── tools.py
-├── main.py
-├── pyproject.toml
-└── README.md
+main.py                         # CLI entry point (--model, --system-prompt)
+│
+├── providers/
+│   ├── base.py                 # BaseLLMClient / AsyncBaseLLMClient (abstract)
+│   ├── models.py               # Conversation & ConversationHistory (Pydantic)
+│   ├── openai_compat_base.py   # Shared base for OpenAI-compatible APIs
+│   ├── OpenAIClient.py         # OpenAI provider
+│   ├── OllamaClient.py         # Ollama provider (local models)
+│   ├── AnthropicClient.py      # Anthropic provider (Claude)
+│   └── ProviderFactory.py      # Auto-selects provider from model name
+│
+└── tools/
+    ├── tools.py                # ToolRegistry + @tool decorator
+    ├── readFile.py             # read_file tool
+    ├── runBash.py              # run_bash tool
+    └── webSearch.py            # web_search tool (Brave Search API)
 ```
-
-## Requirements
-
-- Python 3.12+
-- An Anthropic API key (for Anthropic usage, the default)
-- An OpenAI API key (for OpenAI usage)
-- Optional: Ollama running locally for local models
 
 ## Setup
 
-1. Create a virtual environment and install dependencies:
+### 1. Install dependencies
 
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install -e .
-```
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/):
 
-2. Configure environment variables:
-
-Create a `.env` file in the project root with the API keys for the providers you plan to use:
-
-```
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
+```bash
+uv sync
 ```
 
-The app loads environment variables via `python-dotenv` in `main.py`.
+### 2. Configure environment variables
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+Then fill in your API keys:
+
+```env
+# Required for OpenAI models (gpt-4o, gpt-5.2, o1, etc.)
+OPENAI_API_KEY="sk-your-openai-key-here"
+
+# Required for Anthropic models (claude-sonnet, claude-opus, etc.)
+ANTHROPIC_API_KEY="sk-ant-your-anthropic-key-here"
+
+# Optional — Ollama runs locally, these are the defaults
+OLLAMA_BASE_URL="http://localhost:11434/v1"
+OLLAMA_API_KEY="ollama"
+
+# Optional — only needed for the web_search tool
+BRAVE_SEARCH_API_KEY="your-brave-search-key-here"
+```
+
+> **Note:** `.env` is in `.gitignore` — your keys won't be committed.
+
+**Where to get API keys:**
+- OpenAI: https://platform.openai.com/api-keys
+- Anthropic: https://console.anthropic.com/settings/keys
+- Brave Search: https://brave.com/search/api/
+- Ollama: No key needed — just install and run [Ollama](https://ollama.com/) locally
+
+### 3. (Optional) Install Ollama for local models
+
+```bash
+# macOS
+brew install ollama
+
+# Start the server
+ollama serve
+
+# Pull a model
+ollama pull llama3.1
+```
 
 ## Usage
 
-### Anthropic client (default)
+```bash
+# Default model (gpt-5.2)
+uv run python main.py
 
-Run the chat loop:
+# Specify a model — provider is auto-detected
+uv run python main.py --model gpt-4o              # → OpenAI
+uv run python main.py --model claude-sonnet-4-20250514     # → Anthropic
+uv run python main.py --model llama3.1             # → Ollama (local)
 
-```
-python main.py
-```
-
-Type messages at the prompt. Type `exit` to quit.
-
-By default `main.py` uses `AsyncAnthropicClient` with `claude-opus-4-20250514`. You can change the model by editing `main.py`.
-
-### OpenAI client
-
-To use OpenAI, swap the client in `main.py`:
-
-```python
-from providers.OpenAIClient import AsyncOpenAIClient
-
-client = AsyncOpenAIClient(
-    model="gpt-4o",
-    instructions="you are a generic chat-bot with access to tools",
-)
+# Custom system prompt
+uv run python main.py --model gpt-4o --system-prompt "You are a Python expert"
 ```
 
-### Ollama client
+Type `exit` to quit the chat.
 
-To use Ollama, swap the client in `main.py`:
+## Provider Auto-Detection
 
-```python
-from providers.OllamaClient import AsyncOllamaClient
+The `ProviderFactory` maps model name prefixes to providers:
 
-client = AsyncOllamaClient(
-    model="llama3.1",
-    instructions="you are a generic chat-bot with access to tools",
-)
-```
+| Prefix     | Provider   | Example models                     |
+|------------|------------|-------------------------------------|
+| `gpt`      | OpenAI     | `gpt-4o`, `gpt-5.2`, `gpt-4o-mini` |
+| `o1`       | OpenAI     | `o1`, `o1-mini`                     |
+| `sonnet`   | Anthropic  | `claude-sonnet-4-20250514`                  |
+| `opus`     | Anthropic  | `claude-opus-4-20250514`                    |
+| `llama`    | Ollama     | `llama3.1`, `llama3.2`              |
+| *(other)*  | Ollama     | Any unrecognized model              |
 
-Ensure Ollama is running locally:
+> Unrecognized models default to Ollama, since Ollama can serve many open-source models.
 
-```
-ollama serve
-```
+## Tools
 
-## Tooling
+The chat client can use tools during conversation:
 
-Tools are registered via a decorator in `tools/tools.py`:
+| Tool          | Description                          | Requires          |
+|---------------|--------------------------------------|--------------------|
+| `read_file`   | Read contents of a local file        | —                  |
+| `run_bash`    | Execute a bash command (10s timeout) | —                  |
+| `web_search`  | Search the web via Brave Search      | `BRAVE_SEARCH_API_KEY` |
 
-```python
-from tools.tools import tool
-from pydantic import BaseModel
+Tools are auto-registered via the `@tool` decorator and made available to all providers.
 
-class MyToolParams(BaseModel):
-    value: str
+## Design Patterns
 
-@tool("my_tool", "Describe the tool", MyToolParams)
-def my_tool(value: str) -> str:
-    return f"received: {value}"
-```
-
-Any module imported by `tools/tools.py` will register its tools automatically. Existing tools:
-
-- `read_file(path: str)` in `tools/readFile.py`
-- `run_bash(command: str)` in `tools/runBash.py`
-
-## Conversation Flow
-
-Both clients store a simple conversation history and loop until the model stops requesting tool calls. When a tool call is returned, the tool is executed and the tool result is added back into the conversation.
-
-## Configuration Notes
-
-- Anthropic client uses `AsyncAnthropic()` with your `ANTHROPIC_API_KEY`.
-- OpenAI client uses `AsyncOpenAI()` with your `OPENAI_API_KEY`.
-- Ollama client uses `AsyncOpenAI(base_url="http://localhost:11434/v1", api_key="ollama")` to target the local server.
-- Model names are passed directly to the client (update `model` in `main.py` to switch models).
-
-## Troubleshooting
-
-- If you see authentication errors, confirm your `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set in `.env`.
-- If Ollama requests fail, verify `ollama serve` is running and the model is pulled (e.g., `ollama pull llama3.1`).
-- If tools are not discovered, ensure the module defining them is imported in `tools/tools.py`.
-
-## Development Tips
-
-- Keep tools small and pure where possible for easier debugging.
-- Use `run_bash` sparingly and consider limiting command scope if using untrusted inputs.
-
-## License
-
-This project is provided as-is for experimentation and learning.
+- **Adapter Pattern** — Each provider normalizes a different API (OpenAI, Anthropic, Ollama) to one interface (`BaseLLMClient`)
+- **Strategy Pattern** — Swap providers at runtime via `--model` flag
+- **Factory Pattern** — `ProviderFactory.from_model()` picks the right provider class
+- **Template Method** — `generate_response()` defines the flow; subclasses implement `_call_api()`, `_extract_tool_calls()`, etc.
+- **Decorator Pattern** — `@tool` registers functions as callable tools

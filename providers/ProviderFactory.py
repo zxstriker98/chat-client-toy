@@ -8,10 +8,12 @@ MODEL_PROVIDERS: Final[dict[str, type[AsyncBaseLLMClient]]] = {
 }
 
 MODEL_PREFIXES: Final[list[tuple[str, str]]] = [
-    ("llama", "ollama"),
     ("gpt", "openai"),
-    ("opus", "claude"),
-    ("sonnet", "claude"),
+    ("o1", "openai"),
+    ("claude", "claude"),
+    ("llama", "ollama"),
+    ("mistral", "ollama"),
+    ("qwen", "ollama"),
 ]
 
 

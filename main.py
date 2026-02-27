@@ -19,9 +19,9 @@ async def main(args: Namespace) -> None:
 
 
 if __name__ == "__main__":
+    load_dotenv()
     parser: ArgumentParser = ArgumentParser()
     parser.add_argument("--model", default="gpt-5.2")
     parser.add_argument("--system-prompt", default="you are a generic chat-bot with access to tools")
-    load_dotenv()
     args: Namespace = parser.parse_args()
     asyncio.run(main(args))

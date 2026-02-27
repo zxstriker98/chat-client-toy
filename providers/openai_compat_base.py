@@ -7,7 +7,7 @@ can extend these classes and only override _create_client().
 from openai.types.responses import Response, FunctionToolParam, ResponseFunctionToolCall
 from typing import Any
 from providers.base import BaseLLMClient, AsyncBaseLLMClient
-from providers.models import Conversation
+from providers.models import Conversation, OpenAiToolSchema
 
 
 class OpenAICompatClient(BaseLLMClient):
@@ -49,11 +49,11 @@ class OpenAICompatClient(BaseLLMClient):
         )
         print(tool_response_text)
 
-    def _get_tools(self) -> list[FunctionToolParam] | None:
+    def _get_tools(self) -> list[OpenAiToolSchema] | None:
         if not self.tool_registry.tool_spec:
             return None
         return [
-            FunctionToolParam(
+            OpenAiToolSchema(
                 type="function",
                 name=spec["name"],
                 description=spec.get("description"),

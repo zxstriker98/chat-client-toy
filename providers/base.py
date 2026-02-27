@@ -9,7 +9,7 @@ class BaseLLMClient(BaseModel, ABC):
     """Abstract base class for synchronous LLM clients.
 
     Provider-agnostic — subclasses implement all provider-specific logic
-    (providers creation, API calls, tool formatting, response parsing).
+    (client creation, API calls, tool formatting, response parsing).
     """
 
     client: Any = None
@@ -24,7 +24,7 @@ class BaseLLMClient(BaseModel, ABC):
 
     @abstractmethod
     def _create_client(self) -> Any:
-        """Create and return the provider-specific providers instance."""
+        """Create and return the provider-specific client instance."""
         ...
 
     @abstractmethod
@@ -52,6 +52,10 @@ class BaseLLMClient(BaseModel, ABC):
         """Execute a single tool call and record it in conversation history."""
         ...
 
+    def _pre_tool_hook(self, response: Any) -> None:
+        """Optional hook called before executing tool calls. Override to add provider-specific logic."""
+        pass
+
     def __init__(
         self, model: str, instructions: str, tool_registry: ToolRegistry = registry
     ) -> None:
@@ -76,6 +80,8 @@ class BaseLLMClient(BaseModel, ABC):
             if not tool_calls:
                 return self._process_text_response(self._extract_text(response))
 
+            self._pre_tool_hook(response)
+
             for tool_call in tool_calls:
                 self._execute_tool_call(tool_call)
 
@@ -91,7 +97,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
     """Abstract base class for asynchronous LLM clients.
 
     Provider-agnostic — subclasses implement all provider-specific logic
-    (providers creation, API calls, tool formatting, response parsing).
+    (client creation, API calls, tool formatting, response parsing).
     """
 
     client: Any = None
@@ -106,7 +112,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
 
     @abstractmethod
     def _create_client(self) -> Any:
-        """Create and return the provider-specific async providers instance."""
+        """Create and return the provider-specific async client instance."""
         ...
 
     @abstractmethod
@@ -134,6 +140,10 @@ class AsyncBaseLLMClient(BaseModel, ABC):
         """Execute a single tool call and record it in conversation history."""
         ...
 
+    def _pre_tool_hook(self, response: Any) -> None:
+        """Optional hook called before executing tool calls. Override to add provider-specific logic."""
+        pass
+
     def __init__(
         self, model: str, instructions: str, tool_registry: ToolRegistry = registry
     ) -> None:
@@ -157,6 +167,8 @@ class AsyncBaseLLMClient(BaseModel, ABC):
 
             if not tool_calls:
                 return self._process_text_response(self._extract_text(response))
+
+            self._pre_tool_hook(response)
 
             for tool_call in tool_calls:
                 self._execute_tool_call(tool_call)
