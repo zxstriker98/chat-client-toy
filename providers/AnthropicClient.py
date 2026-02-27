@@ -20,7 +20,7 @@ class AnthropicClient(BaseLLMClient):
         }
         tools: list[AnthropicToolSchema] | None = self._get_tools()
         if tools:
-            kwargs["tools"] = tools
+            kwargs["tools"] = [tool.model_dump() for tool in tools]
         return kwargs
 
     def _get_tools(self) -> list[AnthropicToolSchema] | None:
@@ -84,7 +84,7 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         }
         tools: list[AnthropicToolSchema] | None = self._get_tools()
         if tools:
-            kwargs["tools"] = tools
+            kwargs["tools"] = [tool.model_dump() for tool in tools]
         return kwargs
 
     def _get_tools(self) -> list[AnthropicToolSchema] | None:
