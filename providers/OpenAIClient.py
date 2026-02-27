@@ -3,14 +3,14 @@ from providers.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatCl
 
 
 class OpenAIClient(OpenAICompatClient):
-    """Synchronous OpenAI providers."""
+    """Synchronous OpenAI client."""
 
     def _create_client(self) -> OpenAI:
         return OpenAI()
 
 
 class AsyncOpenAIClient(AsyncOpenAICompatClient):
-    """Asynchronous OpenAI providers."""
+    """Asynchronous OpenAI client."""
 
     def _create_client(self) -> AsyncOpenAI:
         return AsyncOpenAI()

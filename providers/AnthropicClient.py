@@ -1,8 +1,9 @@
+import json
 from typing import Any
 from providers.base import BaseLLMClient, AsyncBaseLLMClient
 from anthropic import Anthropic, AsyncAnthropic
 from anthropic.types import Message, ToolUseBlock
-from providers.models import Conversation
+from providers.models import Conversation, AnthropicToolSchema
 
 MAX_TOKENS: int = 4096
 
@@ -22,15 +23,15 @@ class AnthropicClient(BaseLLMClient):
             kwargs["tools"] = tools
         return kwargs
 
-    def _get_tools(self) -> None | list[dict]:
+    def _get_tools(self) -> None | list[AnthropicToolSchema]:
         if not self.tool_registry.tool_spec:
             return None
         return [
-            {
-                "name": spec["name"],
-                "description": spec.get("description", ""),
-                "input_schema": spec["parameters"],
-            }
+            AnthropicToolSchema(
+                name=spec["name"],
+                description=spec.get("description", ""),
+                input_schema=spec["parameters"],
+            )
             for spec in self.tool_registry.tool_spec.values()
         ]
 
@@ -45,14 +46,12 @@ class AnthropicClient(BaseLLMClient):
         return "\n".join(text_blocks)
 
     def _pre_tool_hook(self, response: Message) -> None:
-        """Append the full assistant response (including tool_use blocks) to history."""
-        content = [block.model_dump() for block in response.content]
+        content: list[dict[str, Any]] = [block.model_dump() for block in response.content]
         self.conversation_history.conversations.append(
             Conversation(role="assistant", content=content)
         )
 
     def _execute_tool_call(self, tool_call: ToolUseBlock) -> None:
-        import json
         arguments = json.dumps(tool_call.input)
         tool_request_text = f"[Tool call: {tool_call.name}({arguments})]"
         print(tool_request_text)
@@ -88,15 +87,15 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
             kwargs["tools"] = tools
         return kwargs
 
-    def _get_tools(self) -> None | list[dict]:
+    def _get_tools(self) -> None | list[AnthropicToolSchema]:
         if not self.tool_registry.tool_spec:
             return None
         return [
-            {
-                "name": spec["name"],
-                "description": spec.get("description", ""),
-                "input_schema": spec["parameters"],
-            }
+            AnthropicToolSchema(
+                name=spec["name"],
+                description=spec.get("description", ""),
+                input_schema=spec["parameters"],
+            )
             for spec in self.tool_registry.tool_spec.values()
         ]
 
@@ -112,13 +111,12 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
 
     def _pre_tool_hook(self, response: Message) -> None:
         """Append the full assistant response (including tool_use blocks) to history."""
-        content = [block.model_dump() for block in response.content]
+        content: list[dict[str, Any]] = [block.model_dump() for block in response.content]
         self.conversation_history.conversations.append(
             Conversation(role="assistant", content=content)
         )
 
     def _execute_tool_call(self, tool_call: ToolUseBlock) -> None:
-        import json
         arguments = json.dumps(tool_call.input)
         tool_request_text = f"[Tool call: {tool_call.name}({arguments})]"
         print(tool_request_text)

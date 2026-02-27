@@ -104,11 +104,11 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient):
         print(tool_response_text)
 
 
-    def _get_tools(self) -> list[FunctionToolParam] | None:
+    def _get_tools(self) -> list[OpenAiToolSchema] | None:
         if not self.tool_registry.tool_spec:
             return None
         return [
-            FunctionToolParam(
+            OpenAiToolSchema(
                 type="function",
                 name=spec["name"],
                 description=spec.get("description"),
