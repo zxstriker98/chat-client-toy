@@ -10,7 +10,7 @@ from openai.types.responses import Response, FunctionToolParam, ResponseFunction
 from typing import Any
 from providers.base import BaseLLMClient, AsyncBaseLLMClient
 from providers.errors.ProviderError import AuthenticationError, RateLimitExceededError, ModelNotFoundError, ConnectionError, ProviderApiError
-from providers.models import Conversation, OpenAiToolSchema
+from providers.models import Conversation, OpenAIToolSchema
 
 
 class OpenAICompatClient(BaseLLMClient, ABC):
@@ -36,7 +36,7 @@ class OpenAICompatClient(BaseLLMClient, ABC):
             "instructions": self.instructions,
             "input": [c.model_dump() for c in self.conversation_history],
         }
-        tools: list[OpenAiToolSchema] | None = self._get_tools()
+        tools: list[OpenAIToolSchema] | None = self._get_tools()
         if tools:
             kwargs["tools"] = tools
         return kwargs
@@ -63,11 +63,11 @@ class OpenAICompatClient(BaseLLMClient, ABC):
         )
         print(tool_response_text)
 
-    def _get_tools(self) -> list[OpenAiToolSchema] | None:
+    def _get_tools(self) -> list[OpenAIToolSchema] | None:
         if not self.tool_registry.tool_spec:
             return None
         return [
-            OpenAiToolSchema(
+            OpenAIToolSchema(
                 type="function",
                 name=spec["name"],
                 description=spec.get("description"),
@@ -101,7 +101,7 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient, ABC):
             "instructions": self.instructions,
             "input": [c.model_dump() for c in self.conversation_history],
         }
-        tools: list[OpenAiToolSchema] | None = self._get_tools()
+        tools: list[OpenAIToolSchema] | None = self._get_tools()
         if tools:
             kwargs["tools"] = tools
         return kwargs
@@ -128,11 +128,11 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient, ABC):
         )
         print(tool_response_text)
 
-    def _get_tools(self) -> list[OpenAiToolSchema] | None:
+    def _get_tools(self) -> list[OpenAIToolSchema] | None:
         if not self.tool_registry.tool_spec:
             return None
         return [
-            OpenAiToolSchema(
+            OpenAIToolSchema(
                 type="function",
                 name=spec["name"],
                 description=spec.get("description"),

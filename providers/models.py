@@ -6,7 +6,7 @@ from typing import Any, Literal, Union
 
 # Type alias — OpenAI's FunctionToolParam is already a TypedDict with
 # type, name, description, parameters, and strict fields.
-OpenAiToolSchema = FunctionToolParam
+OpenAIToolSchema = FunctionToolParam
 
 
 class Conversation(BaseModel):
