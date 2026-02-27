@@ -7,18 +7,18 @@ MODEL_PROVIDERS: Final[dict[str, type[AsyncBaseLLMClient]]] = {
     "claude": AsyncAnthropicClient,
 }
 
-MODEL_PREFIXES: Final[dict[str, str]] = {
-    "llama": "ollama",
-    "gpt": "openai",
-    "opus": "claude",
-    "sonnet": "claude"
-}
+MODEL_PREFIXES: Final[list[tuple[str, str]]] = [
+    ("llama", "ollama"),
+    ("gpt", "openai"),
+    ("opus", "claude"),
+    ("sonnet", "claude"),
+]
 
 
 class ProviderFactory:
     @staticmethod
     def from_model(model_name: str, **kwargs: Any) -> AsyncBaseLLMClient:
-        for prefix, provider in MODEL_PREFIXES.items():
+        for prefix, provider in MODEL_PREFIXES:
             if model_name.lower().startswith(prefix.lower()):
                 client_class = MODEL_PROVIDERS[provider]
                 return client_class(model=model_name, **kwargs)

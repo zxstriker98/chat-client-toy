@@ -62,7 +62,7 @@ class BaseLLMClient(BaseModel, ABC):
             conversation_history=ConversationHistory(conversations=[]),
             tool_registry=tool_registry,
         )
-        object.__setattr__(self, "providers", self._create_client())
+        object.__setattr__(self, "client", self._create_client())
 
     def generate_response(self, query: str) -> str:
         self.conversation_history.append_user_query(query)
@@ -144,7 +144,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             conversation_history=ConversationHistory(conversations=[]),
             tool_registry=tool_registry,
         )
-        object.__setattr__(self, "providers", self._create_client())
+        object.__setattr__(self, "client", self._create_client())
 
     async def generate_response(self, query: str) -> str:
         self.conversation_history.append_user_query(query)

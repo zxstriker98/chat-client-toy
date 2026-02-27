@@ -1,8 +1,9 @@
+import os
 from openai import OpenAI, AsyncOpenAI
 from providers.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatClient
 
-OLLAMA_BASE_URL = "http://localhost:11434/v1"
-OLLAMA_API_KEY = "ollama"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
 
 
 class OllamaClient(OpenAICompatClient):

@@ -1,12 +1,14 @@
+from argparse import ArgumentParser, Namespace
+
 from providers import AsyncBaseLLMClient
 import asyncio
 from dotenv import load_dotenv
 from providers.ProviderFactory import ProviderFactory
 
-async def main():
+async def main(args: Namespace) -> None:
     client: AsyncBaseLLMClient = ProviderFactory.from_model(
-        model="claude-opus-4-20250514",
-        instructions="you are a generic chat-bot with access to tools",
+        model_name=args.model,
+        instructions=args.system_prompt,
     )
     while True:
         query: str = await asyncio.to_thread(input, "> ")
@@ -17,5 +19,9 @@ async def main():
 
 
 if __name__ == "__main__":
+    parser: ArgumentParser = ArgumentParser()
+    parser.add_argument("--model", default="gpt-5.2")
+    parser.add_argument("--system-prompt", default="you are a generic chat-bot with access to tools")
     load_dotenv()
-    asyncio.run(main())
+    args: Namespace = parser.parse_args()
+    asyncio.run(main(args))
