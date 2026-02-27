@@ -12,18 +12,18 @@ class AnthropicClient(BaseLLMClient):
         return Anthropic()
 
     def _build_request_kwargs(self) -> dict[str, Any]:
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "model": self.model,
             "system": self.instructions,
             "messages": self.conversation_history.model_dump()["conversations"],
             "max_tokens": MAX_TOKENS,
         }
-        tools = self._get_tools()
+        tools: list[AnthropicToolSchema] | None = self._get_tools()
         if tools:
             kwargs["tools"] = tools
         return kwargs
 
-    def _get_tools(self) -> None | list[AnthropicToolSchema]:
+    def _get_tools(self) -> list[AnthropicToolSchema] | None:
         if not self.tool_registry.tool_spec:
             return None
         return [
@@ -42,7 +42,7 @@ class AnthropicClient(BaseLLMClient):
         return [block for block in response.content if block.type == "tool_use"]
 
     def _extract_text(self, response: Message) -> str:
-        text_blocks = [block.text for block in response.content if block.type == "text"]
+        text_blocks: list[str] = [block.text for block in response.content if block.type == "text"]
         return "\n".join(text_blocks)
 
     def _pre_tool_hook(self, response: Message) -> None:
@@ -52,11 +52,11 @@ class AnthropicClient(BaseLLMClient):
         )
 
     def _execute_tool_call(self, tool_call: ToolUseBlock) -> None:
-        arguments = json.dumps(tool_call.input)
-        tool_request_text = f"[Tool call: {tool_call.name}({arguments})]"
+        arguments: str = json.dumps(tool_call.input)
+        tool_request_text: str = f"[Tool call: {tool_call.name}({arguments})]"
         print(tool_request_text)
 
-        result = self.tool_registry.execute(tool_call.name, arguments=arguments)
+        result: str = self.tool_registry.execute(tool_call.name, arguments=arguments)
         tool_response_text: str = f"[Tool result: {result}]"
         print(tool_response_text)
 
@@ -76,18 +76,18 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         return AsyncAnthropic()
 
     def _build_request_kwargs(self) -> dict[str, Any]:
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "model": self.model,
             "system": self.instructions,
             "messages": self.conversation_history.model_dump()["conversations"],
             "max_tokens": MAX_TOKENS,
         }
-        tools = self._get_tools()
+        tools: list[AnthropicToolSchema] | None = self._get_tools()
         if tools:
             kwargs["tools"] = tools
         return kwargs
 
-    def _get_tools(self) -> None | list[AnthropicToolSchema]:
+    def _get_tools(self) -> list[AnthropicToolSchema] | None:
         if not self.tool_registry.tool_spec:
             return None
         return [
@@ -106,7 +106,7 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         return [block for block in response.content if block.type == "tool_use"]
 
     def _extract_text(self, response: Message) -> str:
-        text_blocks = [block.text for block in response.content if block.type == "text"]
+        text_blocks: list[str] = [block.text for block in response.content if block.type == "text"]
         return "\n".join(text_blocks)
 
     def _pre_tool_hook(self, response: Message) -> None:
@@ -117,11 +117,11 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         )
 
     def _execute_tool_call(self, tool_call: ToolUseBlock) -> None:
-        arguments = json.dumps(tool_call.input)
-        tool_request_text = f"[Tool call: {tool_call.name}({arguments})]"
+        arguments: str = json.dumps(tool_call.input)
+        tool_request_text: str = f"[Tool call: {tool_call.name}({arguments})]"
         print(tool_request_text)
 
-        result = self.tool_registry.execute(tool_call.name, arguments=arguments)
+        result: str = self.tool_registry.execute(tool_call.name, arguments=arguments)
         tool_response_text: str = f"[Tool result: {result}]"
         print(tool_response_text)
 

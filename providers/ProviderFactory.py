@@ -22,6 +22,6 @@ class ProviderFactory:
     def from_model(model_name: str, **kwargs: Any) -> AsyncBaseLLMClient:
         for prefix, provider in MODEL_PREFIXES:
             if model_name.lower().startswith(prefix.lower()):
-                client_class = MODEL_PROVIDERS[provider]
+                client_class: type[AsyncBaseLLMClient] = MODEL_PROVIDERS[provider]
                 return client_class(model=model_name, **kwargs)
         return AsyncOllamaClient(model=model_name, **kwargs)

@@ -22,7 +22,7 @@ class OpenAICompatClient(BaseLLMClient):
             "instructions": self.instructions,
             "input": self.conversation_history.model_dump()["conversations"],
         }
-        tools = self._get_tools()
+        tools: list[OpenAiToolSchema] | None = self._get_tools()
         if tools:
             kwargs["tools"] = tools
         return kwargs
@@ -34,15 +34,15 @@ class OpenAICompatClient(BaseLLMClient):
         return response.output_text
 
     def _execute_tool_call(self, tool_call: ResponseFunctionToolCall) -> None:
-        tool_request_text = f"[Tool call: {tool_call.name}({tool_call.arguments})]"
+        tool_request_text: str = f"[Tool call: {tool_call.name}({tool_call.arguments})]"
 
         self.conversation_history.conversations.append(
             Conversation(role="assistant", content=tool_request_text)
         )
         print(tool_request_text)
-        
+
         result: str = self.tool_registry.execute(tool_call.name, tool_call.arguments)
-        tool_response_text = f"[Tool result: {result}]"
+        tool_response_text: str = f"[Tool result: {result}]"
 
         self.conversation_history.conversations.append(
             Conversation(role="user", content=tool_response_text)
@@ -76,7 +76,7 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient):
             "instructions": self.instructions,
             "input": self.conversation_history.model_dump()["conversations"],
         }
-        tools = self._get_tools()
+        tools: list[OpenAiToolSchema] | None = self._get_tools()
         if tools:
             kwargs["tools"] = tools
         return kwargs
@@ -88,21 +88,20 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient):
         return response.output_text
 
     def _execute_tool_call(self, tool_call: ResponseFunctionToolCall) -> None:
-        tool_request_text = f"[Tool call: {tool_call.name}({tool_call.arguments})]"
+        tool_request_text: str = f"[Tool call: {tool_call.name}({tool_call.arguments})]"
 
         self.conversation_history.conversations.append(
             Conversation(role="assistant", content=tool_request_text)
         )
         print(tool_request_text)
-        
+
         result: str = self.tool_registry.execute(tool_call.name, tool_call.arguments)
-        tool_response_text = f"[Tool result: {result}]"
+        tool_response_text: str = f"[Tool result: {result}]"
 
         self.conversation_history.conversations.append(
             Conversation(role="user", content=tool_response_text)
         )
         print(tool_response_text)
-
 
     def _get_tools(self) -> list[OpenAiToolSchema] | None:
         if not self.tool_registry.tool_spec:

@@ -75,7 +75,7 @@ class BaseLLMClient(BaseModel, ABC):
             kwargs: dict[str, Any] = self._build_request_kwargs()
             response: Any = self._call_api(**kwargs)
 
-            tool_calls = self._extract_tool_calls(response)
+            tool_calls: list[Any] = self._extract_tool_calls(response)
 
             if not tool_calls:
                 return self._process_text_response(self._extract_text(response))
@@ -163,7 +163,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             kwargs: dict[str, Any] = self._build_request_kwargs()
             response: Any = await self._call_api(**kwargs)
 
-            tool_calls = self._extract_tool_calls(response)
+            tool_calls: list[Any] = self._extract_tool_calls(response)
 
             if not tool_calls:
                 return self._process_text_response(self._extract_text(response))

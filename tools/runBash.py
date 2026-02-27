@@ -11,10 +11,10 @@ class RunBashParams(BaseModel):
 def run_bash(command: str) -> str:
     """Execute a bash command and return the output."""
     try:
-        result = subprocess.run(
+        result: subprocess.CompletedProcess[str] = subprocess.run(
             command, shell=True, capture_output=True, text=True, timeout=10
         )
-        output = result.stdout
+        output: str = result.stdout
         if result.stderr:
             output += result.stderr
         return output if output else "(no output)"

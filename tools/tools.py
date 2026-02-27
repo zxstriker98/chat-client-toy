@@ -1,14 +1,15 @@
-from typing import Callable
+import json
+from typing import Any, Callable
 
 
 class ToolRegistry:
-    def __init__(self):
-        self.tool_spec: dict[str, dict] = {}
-        self.tool_function: dict[str, Callable] = {}
+    def __init__(self) -> None:
+        self.tool_spec: dict[str, dict[str, Any]] = {}
+        self.tool_function: dict[str, Callable[..., str]] = {}
 
-    def register(self, name: str, description: str, param_model: type) -> Callable:
+    def register(self, name: str, description: str, param_model: type) -> Callable[[Callable[..., str]], Callable[..., str]]:
         """Decorator that registers a function as a tool."""
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable[..., str]) -> Callable[..., str]:
             self.tool_spec[name] = {
                 "type": "function",
                 "name": name,
@@ -21,10 +22,9 @@ class ToolRegistry:
 
     def execute(self, name: str, arguments: str) -> str:
         """Execute a registered tool by name with JSON arguments."""
-        import json
         if name not in self.tool_function:
             return f"Unknown tool: {name}"
-        args = json.loads(arguments)
+        args: dict[str, Any] = json.loads(arguments)
         return self.tool_function[name](**args)
 
 

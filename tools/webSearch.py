@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 from pydantic import BaseModel, Field
 import httpx
 from tools.tools import tool
@@ -15,15 +16,15 @@ class BraveSearchClient(BaseModel):
     base_url: str = Field(default="https://api.search.brave.com/res/v1/web/search")
     timeout_seconds: int = Field(default=10, ge=1)
 
-    def search(self, query: str, count: int = 5) -> dict:
-        headers = {
+    def search(self, query: str, count: int = 5) -> dict[str, Any]:
+        headers: dict[str, str] = {
             "Accept": "application/json",
             "X-Subscription-Token": self.api_key,
         }
-        params = {"q": query, "count": count}
+        params: dict[str, str | int] = {"q": query, "count": count}
 
         with httpx.Client(timeout=self.timeout_seconds) as client:
-            response = client.get(self.base_url, headers=headers, params=params)
+            response: httpx.Response = client.get(self.base_url, headers=headers, params=params)
             response.raise_for_status()
             return response.json()
 
@@ -31,17 +32,17 @@ class BraveSearchClient(BaseModel):
 @tool("web_search", "Search the web using Brave Search API", WebSearchParams)
 def web_search(query: str, count: int = 5) -> str:
     """Search the web via Brave Search API and return a compact JSON summary."""
-    api_key = os.getenv("BRAVE_SEARCH_API_KEY")
+    api_key: str | None = os.getenv("BRAVE_SEARCH_API_KEY")
     if not api_key:
         return "Missing BRAVE_SEARCH_API_KEY env var. Set it to use web_search."
 
     try:
-        client = BraveSearchClient(api_key=api_key)
-        data = client.search(query=query, count=count)
+        client: BraveSearchClient = BraveSearchClient(api_key=api_key)
+        data: dict[str, Any] = client.search(query=query, count=count)
     except Exception as exc:
         return f"Brave Search request failed: {exc}"
 
-    results = [{
+    results: list[dict[str, str | None]] = [{
             "title": item.get("title"),
             "url": item.get("url"),
             "description": item.get("description"),
