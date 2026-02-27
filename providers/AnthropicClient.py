@@ -15,7 +15,7 @@ class AnthropicClient(BaseLLMClient):
         kwargs: dict[str, Any] = {
             "model": self.model,
             "system": self.instructions,
-            "messages": self.conversation_history.model_dump()["conversations"],
+            "messages": [c.model_dump() for c in self.conversation_history],
             "max_tokens": MAX_TOKENS,
         }
         tools: list[AnthropicToolSchema] | None = self._get_tools()
@@ -47,7 +47,7 @@ class AnthropicClient(BaseLLMClient):
 
     def _pre_tool_hook(self, response: Message) -> None:
         content: list[dict[str, Any]] = [block.model_dump() for block in response.content]
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="assistant", content=content)
         )
 
@@ -60,7 +60,7 @@ class AnthropicClient(BaseLLMClient):
         tool_response_text: str = f"[Tool result: {result}]"
         print(tool_response_text)
 
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="user", content=[
                 {
                     "type": "tool_result",
@@ -79,7 +79,7 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         kwargs: dict[str, Any] = {
             "model": self.model,
             "system": self.instructions,
-            "messages": self.conversation_history.model_dump()["conversations"],
+            "messages": [c.model_dump() for c in self.conversation_history],
             "max_tokens": MAX_TOKENS,
         }
         tools: list[AnthropicToolSchema] | None = self._get_tools()
@@ -112,7 +112,7 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
     def _pre_tool_hook(self, response: Message) -> None:
         """Append the full assistant response (including tool_use blocks) to history."""
         content: list[dict[str, Any]] = [block.model_dump() for block in response.content]
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="assistant", content=content)
         )
 
@@ -125,7 +125,7 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         tool_response_text: str = f"[Tool result: {result}]"
         print(tool_response_text)
 
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="user", content=[
                 {
                     "type": "tool_result",

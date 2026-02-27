@@ -10,15 +10,6 @@ class Conversation(BaseModel):
     content: Union[str, list[Any]]
 
 
-class ConversationHistory(BaseModel):
-    conversations: list[Conversation]
-
-    def append_user_query(self, user_input: str) -> None:
-        self.conversations.append(Conversation(role="user", content=user_input))
-
-    def append_assistant_response(self, output: str) -> None:
-        self.conversations.append(Conversation(role="assistant", content=output))
-
 class OpenAiToolSchema(BaseModel, FunctionToolParam):
     """Type-safe wrapper around OpenAI's FunctionToolParam."""
     pass

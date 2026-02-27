@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Any
 from tools.tools import ToolRegistry, registry
-from providers.models import ConversationHistory
+from providers.models import Conversation
 
 
 class BaseLLMClient(BaseModel, ABC):
@@ -14,9 +14,7 @@ class BaseLLMClient(BaseModel, ABC):
 
     client: Any = None
     model: str = ""
-    conversation_history: ConversationHistory = Field(
-        default_factory=lambda: ConversationHistory(conversations=[])
-    )
+    conversation_history: list[Conversation] = Field(default_factory=list)
     instructions: str = ""
     tool_registry: ToolRegistry = registry
 
@@ -63,13 +61,13 @@ class BaseLLMClient(BaseModel, ABC):
             client=None,
             model=model,
             instructions=instructions,
-            conversation_history=ConversationHistory(conversations=[]),
+            conversation_history=[],
             tool_registry=tool_registry,
         )
         object.__setattr__(self, "client", self._create_client())
 
     def generate_response(self, query: str) -> str:
-        self.conversation_history.append_user_query(query)
+        self.conversation_history.append(Conversation(role="user", content=query))
 
         while True:
             kwargs: dict[str, Any] = self._build_request_kwargs()
@@ -89,7 +87,7 @@ class BaseLLMClient(BaseModel, ABC):
 
     def _process_text_response(self, output_text: str) -> str:
         print(output_text)
-        self.conversation_history.append_assistant_response(output_text)
+        self.conversation_history.append(Conversation(role="assistant", content=output_text))
         return output_text
 
 
@@ -102,9 +100,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
 
     client: Any = None
     model: str = ""
-    conversation_history: ConversationHistory = Field(
-        default_factory=lambda: ConversationHistory(conversations=[])
-    )
+    conversation_history: list[Conversation] = Field(default_factory=list)
     instructions: str = ""
     tool_registry: ToolRegistry = registry
 
@@ -151,13 +147,13 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             client=None,
             model=model,
             instructions=instructions,
-            conversation_history=ConversationHistory(conversations=[]),
+            conversation_history=[],
             tool_registry=tool_registry,
         )
         object.__setattr__(self, "client", self._create_client())
 
     async def generate_response(self, query: str) -> str:
-        self.conversation_history.append_user_query(query)
+        self.conversation_history.append(Conversation(role="user", content=query))
 
         while True:
             kwargs: dict[str, Any] = self._build_request_kwargs()
@@ -177,5 +173,5 @@ class AsyncBaseLLMClient(BaseModel, ABC):
 
     def _process_text_response(self, output_text: str) -> str:
         print(output_text)
-        self.conversation_history.append_assistant_response(output_text)
+        self.conversation_history.append(Conversation(role="assistant", content=output_text))
         return output_text

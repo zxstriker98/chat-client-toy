@@ -3,6 +3,7 @@
 Any provider that speaks the OpenAI API (OpenAI, Ollama, Groq, Together AI, etc.)
 can extend these classes and only override _create_client().
 """
+from abc import ABC
 
 from openai.types.responses import Response, FunctionToolParam, ResponseFunctionToolCall
 from typing import Any
@@ -10,7 +11,7 @@ from providers.base import BaseLLMClient, AsyncBaseLLMClient
 from providers.models import Conversation, OpenAiToolSchema
 
 
-class OpenAICompatClient(BaseLLMClient):
+class OpenAICompatClient(BaseLLMClient, ABC):
     """Sync base for any provider using the OpenAI-compatible API."""
 
     def _call_api(self, **kwargs: Any) -> Response:
@@ -20,7 +21,7 @@ class OpenAICompatClient(BaseLLMClient):
         kwargs: dict[str, Any] = {
             "model": self.model,
             "instructions": self.instructions,
-            "input": self.conversation_history.model_dump()["conversations"],
+            "input": [c.model_dump() for c in self.conversation_history],
         }
         tools: list[OpenAiToolSchema] | None = self._get_tools()
         if tools:
@@ -36,7 +37,7 @@ class OpenAICompatClient(BaseLLMClient):
     def _execute_tool_call(self, tool_call: ResponseFunctionToolCall) -> None:
         tool_request_text: str = f"[Tool call: {tool_call.name}({tool_call.arguments})]"
 
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="assistant", content=tool_request_text)
         )
         print(tool_request_text)
@@ -44,7 +45,7 @@ class OpenAICompatClient(BaseLLMClient):
         result: str = self.tool_registry.execute(tool_call.name, tool_call.arguments)
         tool_response_text: str = f"[Tool result: {result}]"
 
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="user", content=tool_response_text)
         )
         print(tool_response_text)
@@ -64,7 +65,7 @@ class OpenAICompatClient(BaseLLMClient):
         ]
 
 
-class AsyncOpenAICompatClient(AsyncBaseLLMClient):
+class AsyncOpenAICompatClient(AsyncBaseLLMClient, ABC):
     """Async base for any provider using the OpenAI-compatible API."""
 
     async def _call_api(self, **kwargs: Any) -> Response:
@@ -74,7 +75,7 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient):
         kwargs: dict[str, Any] = {
             "model": self.model,
             "instructions": self.instructions,
-            "input": self.conversation_history.model_dump()["conversations"],
+            "input": [c.model_dump() for c in self.conversation_history],
         }
         tools: list[OpenAiToolSchema] | None = self._get_tools()
         if tools:
@@ -90,7 +91,7 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient):
     def _execute_tool_call(self, tool_call: ResponseFunctionToolCall) -> None:
         tool_request_text: str = f"[Tool call: {tool_call.name}({tool_call.arguments})]"
 
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="assistant", content=tool_request_text)
         )
         print(tool_request_text)
@@ -98,7 +99,7 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient):
         result: str = self.tool_registry.execute(tool_call.name, tool_call.arguments)
         tool_response_text: str = f"[Tool result: {result}]"
 
-        self.conversation_history.conversations.append(
+        self.conversation_history.append(
             Conversation(role="user", content=tool_response_text)
         )
         print(tool_response_text)
