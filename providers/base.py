@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Any
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from typing import Any, AsyncIterator
 from tools.tools import ToolRegistry, registry
 from providers.models import Conversation
-
 
 class BaseLLMClient(BaseModel, ABC):
     """Abstract base class for synchronous LLM clients.
@@ -103,8 +102,16 @@ class AsyncBaseLLMClient(BaseModel, ABC):
     conversation_history: list[Conversation] = Field(default_factory=list)
     instructions: str = ""
     tool_registry: ToolRegistry = registry
-
+    _last_stream_response: Any | None = PrivateAttr(default=None)
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @abstractmethod
+    async def _call_api_streaming(self, **kwargs: Any) -> AsyncIterator[str]:
+        """
+        Stream tokens from the provider. Yields text chunks as they arrive.
+
+        Should yield text strings for content, and raise / return when tool calls are detected
+        """
 
     @abstractmethod
     def _create_client(self) -> Any:
@@ -140,6 +147,9 @@ class AsyncBaseLLMClient(BaseModel, ABC):
         """Optional hook called before executing tool calls. Override to add provider-specific logic."""
         pass
 
+    def _pre_tool_hook_streaming(self) -> None:
+        pass
+
     def __init__(
         self, model: str, instructions: str, tool_registry: ToolRegistry = registry
     ) -> None:
@@ -170,6 +180,38 @@ class AsyncBaseLLMClient(BaseModel, ABC):
                 self._execute_tool_call(tool_call)
 
         return ""
+
+    async def generate_response_streaming(self, query: str) -> str:
+        """Like generate_response, but streams text tokens to stdout in real-time"""
+        self.conversation_history.append(Conversation(role="user", content=query))
+
+        while True:
+            self._last_stream_response = None
+            kwargs = self._build_request_kwargs()
+            kwargs["stream"] = True
+
+            collected_text: list[str] = []
+            async for chunk in self._call_api_streaming(**kwargs):
+                if isinstance(chunk, str):
+                    print(chunk, end="", flush=True)
+                    collected_text.append(chunk)
+
+            full_text = "".join(collected_text)
+
+            tool_calls: list[Any] = []
+            if hasattr(self, '_last_stream_response') and self._last_stream_response:
+                tool_calls = self._extract_tool_calls(self._last_stream_response)
+
+            if not tool_calls:
+                print()
+                self.conversation_history.append(
+                    Conversation(role="assistant", content=full_text)
+                )
+                return full_text
+
+            self._pre_tool_hook_streaming()
+            for tool_call in tool_calls:
+                self._execute_tool_call(tool_call)
 
     def _process_text_response(self, output_text: str) -> str:
         print(output_text)

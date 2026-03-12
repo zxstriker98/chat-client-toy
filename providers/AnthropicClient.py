@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, AsyncIterator
 
 import anthropic
 from providers.errors.ProviderError import AuthenticationError, RateLimitExceededError, ModelNotFoundError, ConnectionError, ProviderApiError
@@ -127,6 +127,24 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         except anthropic.APIError as e:
             raise ProviderApiError(str(e), provider="anthropic", original_error=e)
 
+    async def _call_api_streaming(self, **kwargs: Any) -> AsyncIterator[str]:
+        kwargs.pop("stream", None)
+        try:
+            async with self.client.messages.stream(**kwargs) as stream:
+                async for text in stream.text_stream:
+                    yield text
+                self._last_stream_response = await stream.get_final_message()
+        except anthropic.AuthenticationError as e:
+            raise AuthenticationError("Invalid API key", provider="anthropic", original_error=e)
+        except anthropic.RateLimitError as e:
+            raise RateLimitExceededError("Rate limit exceeded", provider="anthropic", original_error=e)
+        except anthropic.NotFoundError as e:
+            raise ModelNotFoundError(f"Model not found: {self.model}", provider="anthropic", original_error=e)
+        except anthropic.APIConnectionError as e:
+            raise ConnectionError("Cannot reach Anthropic API", provider="anthropic", original_error=e)
+        except anthropic.APIError as e:
+            raise ProviderApiError(str(e), provider="anthropic", original_error=e)
+
     def _extract_tool_calls(self, response: Message) -> list[ToolUseBlock]:
         return [block for block in response.content if block.type == "tool_use"]
 
@@ -134,12 +152,22 @@ class AsyncAnthropicClient(AsyncBaseLLMClient):
         text_blocks: list[str] = [block.text for block in response.content if block.type == "text"]
         return "\n".join(text_blocks)
 
+    def _pre_tool_hook_streaming(self) -> None:
+        """Hook called before executing tool calls during streaming."""
+        if self._last_stream_response:
+            self._pre_tool_hook(self._last_stream_response)
+
     def _pre_tool_hook(self, response: Message) -> None:
         """Append the full assistant response (including tool_use blocks) to history."""
         content: list[dict[str, Any]] = [block.model_dump() for block in response.content]
         self.conversation_history.append(
             Conversation(role="assistant", content=content)
         )
+
+    def _extract_streamed_tool_calls(self):
+        if hasattr(self, "_last_stream_response") and self._last_stream_response:
+            return self._extract_tool_calls(self._last_stream_response)
+        return []
 
     def _execute_tool_call(self, tool_call: ToolUseBlock) -> None:
         arguments: str = json.dumps(tool_call.input)

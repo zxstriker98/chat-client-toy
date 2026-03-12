@@ -4,6 +4,8 @@ from providers.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatCl
 from providers.OpenAIClient import OpenAIClient, AsyncOpenAIClient
 from providers.OllamaClient import OllamaClient, AsyncOllamaClient
 from providers.AnthropicClient import AnthropicClient, AsyncAnthropicClient
+from providers.GrokClient import GrokClient, AsyncGrokClient
+from providers.GroqClient import GroqClient, AsyncGroqClient
 
 __all__ = [
     "Conversation",
@@ -17,4 +19,8 @@ __all__ = [
     "AsyncOllamaClient",
     "AnthropicClient",
     "AsyncAnthropicClient",
+    "GrokClient",
+    "AsyncGrokClient",
+    "GroqClient",
+    "AsyncGroqClient",
 ]
