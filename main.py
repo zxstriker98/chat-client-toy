@@ -1,3 +1,4 @@
+import argparse
 from argparse import ArgumentParser, Namespace
 
 from providers import AsyncBaseLLMClient
@@ -41,7 +42,10 @@ async def main(args: Namespace) -> None:
             continue
 
         try:
-            await client.generate_response(query=query)
+            if args.stream:
+                await client.generate_response_streaming(query=query)
+            else:
+                await client.generate_response(query=query)
         except KeyboardInterrupt:
             print("\n[Interrupted]")
         except AuthenticationError as e:
@@ -63,6 +67,7 @@ async def main(args: Namespace) -> None:
 if __name__ == "__main__":
     load_dotenv()
     parser: ArgumentParser = ArgumentParser()
+    parser.add_argument("--stream", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--model", default="gpt-5.2")
     parser.add_argument("--system-prompt", default="you are a generic chat-bot with access to tools")
     args: Namespace = parser.parse_args()
