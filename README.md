@@ -133,15 +133,17 @@ uv run python main.py --model gpt-4o --no-stream
 
 The `ProviderFactory` maps model name prefixes to providers:
 
-| Prefix     | Provider   | Example models                          |
-|------------|------------|-----------------------------------------|
-| `gpt`      | OpenAI     | `gpt-4o`, `gpt-5.2`, `gpt-4o-mini`     |
-| `o1`       | OpenAI     | `o1`, `o1-mini`                         |
-| `claude`   | Anthropic  | `claude-sonnet-4-20250514`, `claude-opus-4-20250514` |
-| `grok`     | Grok (xAI) | `grok-2`, `grok-3`                      |
-| `llama`    | Groq       | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant` |
-| `mistral`  | Groq       | `mistral-saba-24b`                      |
-| `qwen`     | Groq       | `qwen-qwq-32b`                         |
+| Prefix           | Provider   | Example models                          |
+|------------------|------------|-----------------------------------------|
+| `gpt`            | OpenAI     | `gpt-4o`, `gpt-5.2`, `gpt-4o-mini`     |
+| `o1`             | OpenAI     | `o1`, `o1-mini`                         |
+| `claude`         | Anthropic  | `claude-sonnet-4-20250514`, `claude-opus-4-20250514` |
+| `grok`           | Grok (xAI) | `grok-2`, `grok-3`                      |
+| `llama`          | Groq       | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant` |
+| `mistral`        | Groq       | `mistral-saba-24b`                      |
+| `qwen`           | Groq       | `qwen-qwq-32b`                         |
+| `openai/gpt-oss-120b` | Groq       | `openai/gpt-oss-120b`                         |
+
 | *(other)*  | Ollama     | Any unrecognized model (runs locally)   |
 
 > Unrecognized models default to Ollama, which can serve many open-source models locally.

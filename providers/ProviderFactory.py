@@ -18,6 +18,7 @@ MODEL_PREFIXES: Final[list[tuple[str, str]]] = [
     ("llama", "groq"),
     ("mistral", "groq"),
     ("qwen", "groq"),
+    ("openai/gpt-oss-120b", "groq")
 ]
 
 
