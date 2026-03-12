@@ -1,10 +1,9 @@
 import sys
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Any
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from typing import Any, AsyncIterator
 from tools.tools import ToolRegistry, registry
 from providers.models import Conversation
-
 
 class BaseLLMClient(BaseModel, ABC):
     """Abstract base class for synchronous LLM clients.
@@ -104,8 +103,16 @@ class AsyncBaseLLMClient(BaseModel, ABC):
     conversation_history: list[Conversation] = Field(default_factory=list)
     instructions: str = ""
     tool_registry: ToolRegistry = registry
-
+    _last_stream_response: Any | None = PrivateAttr(default=None)
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @abstractmethod
+    async def _call_api_streaming(self, **kwargs: Any) -> AsyncIterator[str]:
+        """
+        Stream tokens from the provider. Yields text chunks as they arrive.
+
+        Should yield text strings for content, and raise / return when tool calls are detected
+        """
 
     @abstractmethod
     def _create_client(self) -> Any:
@@ -141,6 +148,9 @@ class AsyncBaseLLMClient(BaseModel, ABC):
         """Optional hook called before executing tool calls. Override to add provider-specific logic."""
         pass
 
+    def _pre_tool_hook_streaming(self) -> None:
+        pass
+
     def __init__(
         self, model: str, instructions: str, tool_registry: ToolRegistry = registry
     ) -> None:
@@ -172,8 +182,6 @@ class AsyncBaseLLMClient(BaseModel, ABC):
 
         return ""
 
-<<<<<<< Updated upstream
-=======
     async def generate_response_streaming(self, query: str) -> str:
         """Like generate_response, but streams text tokens to stdout in real-time"""
         self.conversation_history.append(Conversation(role="user", content=query))
@@ -205,8 +213,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             self._pre_tool_hook_streaming()
             for tool_call in tool_calls:
                 self._execute_tool_call(tool_call)
-
->>>>>>> Stashed changes
+                
     def _process_text_response(self, output_text: str) -> str:
         print(output_text)
         self.conversation_history.append(Conversation(role="assistant", content=output_text))
