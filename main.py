@@ -1,4 +1,5 @@
 import argparse
+import sys
 from argparse import ArgumentParser, Namespace
 
 from providers import AsyncBaseLLMClient
@@ -29,7 +30,8 @@ async def main(args: Namespace) -> None:
 
     while True:
         try:
-            query: str = await asyncio.to_thread(input, "> ")
+            sys.stdout.flush()
+            query: str = await asyncio.get_running_loop().run_in_executor(None, lambda: input("> "))
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye!")
             return
@@ -44,6 +46,7 @@ async def main(args: Namespace) -> None:
         try:
             if args.stream:
                 await client.generate_response_streaming(query=query)
+                sys.stdout.flush()
             else:
                 await client.generate_response(query=query)
         except KeyboardInterrupt:

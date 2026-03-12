@@ -1,3 +1,4 @@
+import sys
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from typing import Any, AsyncIterator
@@ -203,7 +204,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
                 tool_calls = self._extract_tool_calls(self._last_stream_response)
 
             if not tool_calls:
-                print()
+                print(flush=True)
                 self.conversation_history.append(
                     Conversation(role="assistant", content=full_text)
                 )
@@ -212,7 +213,7 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             self._pre_tool_hook_streaming()
             for tool_call in tool_calls:
                 self._execute_tool_call(tool_call)
-
+                
     def _process_text_response(self, output_text: str) -> str:
         print(output_text)
         self.conversation_history.append(Conversation(role="assistant", content=output_text))
