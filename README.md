@@ -22,7 +22,8 @@ main.py                         # CLI entry point (--model, --system-prompt, --s
     ├── tools.py                # ToolRegistry + @tool decorator
     ├── readFile.py             # read_file tool
     ├── runBash.py              # run_bash tool
-    └── webSearch.py            # web_search tool (Brave Search API)
+    ├── webSearch.py            # web_search tool (Brave Search API)
+    └── pageIndex.py            # page_index tool (PageIndex vectorless RAG)
 ```
 
 ## Setup
@@ -64,6 +65,9 @@ OLLAMA_API_KEY="ollama"
 
 # Optional — only needed for the web_search tool
 BRAVE_SEARCH_API_KEY="your-brave-search-key-here"
+
+# Optional — only needed for the page_index tool (PageIndex RAG)
+PAGEINDEX_API_KEY="your-pageindex-api-key-here"
 ```
 
 > **Note:** `.env` is in `.gitignore` — your keys won't be committed.
@@ -74,6 +78,7 @@ BRAVE_SEARCH_API_KEY="your-brave-search-key-here"
 - Grok (xAI): https://console.x.ai/
 - Groq: https://console.groq.com/keys
 - Brave Search: https://brave.com/search/api/
+- PageIndex: https://pageindex.ai/
 - Ollama: No key needed — just install and run [Ollama](https://ollama.com/) locally
 
 ### 3. (Optional) Install Ollama for local models
@@ -169,13 +174,57 @@ Runs open source models **locally** on your machine. No API key needed. Falls ba
 
 The chat client can use tools during conversation:
 
-| Tool          | Description                          | Requires          |
-|---------------|--------------------------------------|-------------------|
-| `read_file`   | Read contents of a local file        | —                 |
-| `run_bash`    | Execute a bash command (10s timeout) | —                 |
-| `web_search`  | Search the web via Brave Search      | `BRAVE_SEARCH_API_KEY` |
+| Tool          | Description                                        | Requires               |
+|---------------|----------------------------------------------------|------------------------|
+| `read_file`   | Read contents of a local file (truncated at 100 KB) | —                      |
+| `run_bash`    | Execute a bash command (30s timeout)               | —                      |
+| `web_search`  | Search the web via Brave Search                    | `BRAVE_SEARCH_API_KEY` |
+| `page_index`  | Index & query documents using PageIndex RAG        | `PAGEINDEX_API_KEY`    |
 
 Tools are auto-registered via the `@tool` decorator and made available to all providers.
+
+### PageIndex Tool
+
+The `page_index` tool provides document indexing and question-answering via [PageIndex](https://pageindex.ai/) vectorless RAG. Upload a PDF or document, and then ask natural-language questions against it.
+
+**Actions:**
+
+| Action          | Description                                                                 |
+|-----------------|-----------------------------------------------------------------------------|
+| `submit`        | Upload a document and wait until it's indexed (auto-polls for readiness)    |
+| `get_tree`      | Get the document's hierarchical structure as a formatted tree with summaries |
+| `query`         | Ask a question against a document (auto-polls until the answer is ready)    |
+| `get_retrieval` | Fetch a previous retrieval result by ID                                     |
+| `status`        | Check a document's processing status                                        |
+| `list`          | List all indexed documents                                                  |
+| `delete`        | Delete an indexed document                                                  |
+| `ocr`           | Get OCR text for a document (`raw`, `page`, or `node` format)              |
+
+**Example conversation flow:**
+
+```
+> Index sample.pdf and tell me what it's about
+
+[Tool call: page_index({"action": "submit", "path": "sample.pdf"})]
+→ doc_id: abc123, status: ready
+
+[Tool call: page_index({"action": "get_tree", "doc_id": "abc123"})]
+→ Document tree for abc123:
+  - Introduction  [node_id=n1]  (page 1)
+    Summary: Overview of the report...
+  - Methodology  [node_id=n2]  (page 3)
+    Summary: Research methods used...
+
+> What does chapter 2 say about methodology?
+
+[Tool call: page_index({"action": "query", "doc_id": "abc123", "query": "What does chapter 2 say about methodology?"})]
+→ The methodology section describes...
+```
+
+Key improvements over raw API usage:
+- **Auto-polling** — `submit` and `query` wait for results instead of returning immediately with a pending status
+- **Formatted tree output** — hierarchical structure is displayed as a readable indented tree instead of raw JSON
+- **Node summaries** — tree nodes include AI-generated summaries of each section
 
 ## Design Patterns
 
