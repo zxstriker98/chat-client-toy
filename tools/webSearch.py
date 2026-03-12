@@ -16,15 +16,17 @@ class BraveSearchClient(BaseModel):
     base_url: str = Field(default="https://api.search.brave.com/res/v1/web/search")
     timeout_seconds: int = Field(default=10, ge=1)
 
-    def search(self, query: str, count: int = 5) -> dict[str, Any]:
-        headers: dict[str, str] = {
+    def _headers(self) -> dict[str, str]:
+        return {
             "Accept": "application/json",
             "X-Subscription-Token": self.api_key,
         }
+
+    def search(self, query: str, count: int = 5) -> dict[str, Any]:
         params: dict[str, str | int] = {"q": query, "count": count}
 
         with httpx.Client(timeout=self.timeout_seconds) as client:
-            response: httpx.Response = client.get(self.base_url, headers=headers, params=params)
+            response: httpx.Response = client.get(self.base_url, headers=self._headers(), params=params)
             response.raise_for_status()
             return response.json()
 

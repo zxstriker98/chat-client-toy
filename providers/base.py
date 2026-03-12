@@ -1,9 +1,16 @@
+import asyncio
 import sys
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from typing import Any, AsyncIterator
 from tools.tools import ToolRegistry, registry
 from providers.models import Conversation
+
+# Default timeout (seconds) for a single LLM API call.
+DEFAULT_API_TIMEOUT: int = 120
+
+# Maximum number of consecutive tool-call rounds before we force a text reply.
+MAX_TOOL_ROUNDS: int = 20
 
 class BaseLLMClient(BaseModel, ABC):
     """Abstract base class for synchronous LLM clients.
@@ -69,7 +76,7 @@ class BaseLLMClient(BaseModel, ABC):
     def generate_response(self, query: str) -> str:
         self.conversation_history.append(Conversation(role="user", content=query))
 
-        while True:
+        for round_num in range(MAX_TOOL_ROUNDS):
             kwargs: dict[str, Any] = self._build_request_kwargs()
             response: Any = self._call_api(**kwargs)
 
@@ -83,7 +90,9 @@ class BaseLLMClient(BaseModel, ABC):
             for tool_call in tool_calls:
                 self._execute_tool_call(tool_call)
 
-        return ""
+        # If we exhausted the tool-call budget, return whatever text we have.
+        print("[Warning: max tool-call rounds reached, returning partial response]")
+        return self._process_text_response(self._extract_text(response))
 
     def _process_text_response(self, output_text: str) -> str:
         print(output_text)
@@ -166,9 +175,19 @@ class AsyncBaseLLMClient(BaseModel, ABC):
     async def generate_response(self, query: str) -> str:
         self.conversation_history.append(Conversation(role="user", content=query))
 
-        while True:
+        response: Any = None
+        for round_num in range(MAX_TOOL_ROUNDS):
             kwargs: dict[str, Any] = self._build_request_kwargs()
-            response: Any = await self._call_api(**kwargs)
+            try:
+                response = await asyncio.wait_for(
+                    self._call_api(**kwargs),
+                    timeout=DEFAULT_API_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                msg = f"[Error: LLM API call timed out after {DEFAULT_API_TIMEOUT}s]"
+                print(msg)
+                self.conversation_history.append(Conversation(role="assistant", content=msg))
+                return msg
 
             tool_calls: list[Any] = self._extract_tool_calls(response)
 
@@ -180,22 +199,43 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             for tool_call in tool_calls:
                 self._execute_tool_call(tool_call)
 
-        return ""
+        # If we exhausted the tool-call budget, return whatever text we have.
+        print("[Warning: max tool-call rounds reached, returning partial response]")
+        final_text = self._extract_text(response) if response else ""
+        return self._process_text_response(final_text)
 
     async def generate_response_streaming(self, query: str) -> str:
         """Like generate_response, but streams text tokens to stdout in real-time"""
         self.conversation_history.append(Conversation(role="user", content=query))
 
-        while True:
+        full_text = ""
+        for round_num in range(MAX_TOOL_ROUNDS):
             self._last_stream_response = None
             kwargs = self._build_request_kwargs()
             kwargs["stream"] = True
 
             collected_text: list[str] = []
-            async for chunk in self._call_api_streaming(**kwargs):
-                if isinstance(chunk, str):
-                    print(chunk, end="", flush=True)
-                    collected_text.append(chunk)
+
+            async def _consume_stream() -> None:
+                async for chunk in self._call_api_streaming(**kwargs):
+                    if isinstance(chunk, str):
+                        print(chunk, end="", flush=True)
+                        collected_text.append(chunk)
+
+            try:
+                await asyncio.wait_for(
+                    _consume_stream(),
+                    timeout=DEFAULT_API_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                # Print whatever we collected so far, then warn the user.
+                partial = "".join(collected_text)
+                print(f"\n[Error: streaming response timed out after {DEFAULT_API_TIMEOUT}s]", flush=True)
+                if partial:
+                    self.conversation_history.append(
+                        Conversation(role="assistant", content=partial)
+                    )
+                return partial
 
             full_text = "".join(collected_text)
 
@@ -213,6 +253,13 @@ class AsyncBaseLLMClient(BaseModel, ABC):
             self._pre_tool_hook_streaming()
             for tool_call in tool_calls:
                 self._execute_tool_call(tool_call)
+
+        # If we exhausted the tool-call budget, return whatever we have.
+        print("\n[Warning: max tool-call rounds reached, returning partial response]", flush=True)
+        self.conversation_history.append(
+            Conversation(role="assistant", content=full_text)
+        )
+        return full_text
                 
     def _process_text_response(self, output_text: str) -> str:
         print(output_text)

@@ -2,6 +2,10 @@ import subprocess
 from pydantic import BaseModel, Field
 from tools.tools import tool
 
+BASH_TIMEOUT: int = 30
+
+MAX_OUTPUT_LENGTH: int = 500_000
+
 
 class RunBashParams(BaseModel):
     command: str = Field(description="The bash command to execute")
@@ -12,13 +16,17 @@ def run_bash(command: str) -> str:
     """Execute a bash command and return the output."""
     try:
         result: subprocess.CompletedProcess[str] = subprocess.run(
-            command, shell=True, capture_output=True, text=True, timeout=10
+            command, shell=True, capture_output=True, text=True, timeout=BASH_TIMEOUT
         )
         output: str = result.stdout
         if result.stderr:
             output += result.stderr
-        return output if output else "(no output)"
+        if not output:
+            return "(no output)"
+        if len(output) > MAX_OUTPUT_LENGTH:
+            output = output[:MAX_OUTPUT_LENGTH] + f"\n... [truncated — {len(output)} chars total, showing first {MAX_OUTPUT_LENGTH}]"
+        return output
     except subprocess.TimeoutExpired:
-        return f"Error: Command timed out after 10 seconds"
+        return f"Error: Command timed out after {BASH_TIMEOUT} seconds"
     except Exception as e:
         return f"Error: {str(e)}"
