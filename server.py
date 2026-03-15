@@ -17,12 +17,16 @@ from providers.OllamaClient import AsyncOllamaClient
 
 
 def load_restaurant(slug: str) -> dict:
-    """Load restaurant config and menu from restaurants/<slug>/"""
+    """Load restaurant config and all .md files from restaurants/<slug>/"""
     restaurant_dir = Path(__file__).parent / "restaurants" / slug
     if not restaurant_dir.exists():
         return {}
     config = json.loads((restaurant_dir / "config.json").read_text())
-    config["menu"] = (restaurant_dir / "menu.md").read_text()
+    # Load all markdown files as knowledge
+    docs = []
+    for md_file in sorted(restaurant_dir.glob("*.md")):
+        docs.append(md_file.read_text())
+    config["knowledge"] = "\n\n---\n\n".join(docs)
     return config
 
 
@@ -50,7 +54,7 @@ def create_handler(model: str, restaurant: dict | None = None):
 
             # Inject restaurant context if available
             if restaurant:
-                system += f"\n\nRestaurant: {restaurant['name']}\nCuisine: {restaurant.get('cuisine', '')}\n\n{restaurant['menu']}"
+                system += f"\n\nRestaurant: {restaurant['name']}\nCuisine: {restaurant.get('cuisine', '')}\n\n{restaurant['knowledge']}"
 
             # Create a fresh client per request
             # Disable tools in restaurant mode — menu is in the system prompt
