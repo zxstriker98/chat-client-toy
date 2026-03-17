@@ -1,101 +1,52 @@
 import json
 import os
-import time
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 from pageindex import PageIndexClient
+from services.PageIndexService import PageIndexService
+from database.cache import PageIndexCacheService
+from database.connection import create_db
+from database.repository.FileRepository import FileRepository
 from tools.tools import tool
 
 # ---------------------------------------------------------------------------
-# Polling configuration
+# Singletons — lazily initialized
 # ---------------------------------------------------------------------------
-POLL_INTERVAL: float = 3.0   # seconds between status checks
-MAX_POLL_TIME: float = 180.0
-# ---------------------------------------------------------------------------
-# Client singleton
-# ---------------------------------------------------------------------------
-_PI_CLIENT: PageIndexClient | None = None
+_SERVICE: PageIndexService | None = None
+_CACHE: PageIndexCacheService | None = None
 
 
-def _get_client() -> PageIndexClient:
-    global _PI_CLIENT
-    if _PI_CLIENT is not None:
-        return _PI_CLIENT
+def _get_service() -> PageIndexService:
+    global _SERVICE
+    if _SERVICE is not None:
+        return _SERVICE
 
     api_key: str | None = os.getenv("PAGEINDEX_API_KEY")
     if not api_key:
         raise RuntimeError("Missing PAGEINDEX_API_KEY env var. Set it to use page_index.")
 
-    _PI_CLIENT = PageIndexClient(api_key=api_key)
-    return _PI_CLIENT
+    client = PageIndexClient(api_key=api_key)
+    _SERVICE = PageIndexService(client)
+    return _SERVICE
+
+def _get_cache() -> PageIndexCacheService:
+    global _CACHE
+    if _CACHE is not None:
+        return _CACHE
+
+    db_path = os.getenv("PAGEINDEX_DB_PATH", "data/pageindex_cache.db")
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    session_factory = create_db(db_path)
+    repo = FileRepository(session_factory())
+    _CACHE = PageIndexCacheService(repo)
+    return _CACHE
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Param model
 # ---------------------------------------------------------------------------
-
-def _poll_tree_ready(client: PageIndexClient, doc_id: str) -> bool:
-    """Poll until the document tree is ready or we time out."""
-    deadline = time.monotonic() + MAX_POLL_TIME
-    while time.monotonic() < deadline:
-        if client.is_retrieval_ready(doc_id):
-            return True
-        time.sleep(POLL_INTERVAL)
-    return False
-
-
-def _poll_retrieval(client: PageIndexClient, retrieval_id: str) -> dict[str, Any]:
-    """Poll ``get_retrieval`` until the result is ready or we time out."""
-    deadline = time.monotonic() + MAX_POLL_TIME
-    while time.monotonic() < deadline:
-        data = client.get_retrieval(retrieval_id=retrieval_id)
-        status = data.get("status", "").lower()
-        if status in ("completed", "done", "ready"):
-            return data
-        if status in ("failed", "error"):
-            return data
-        time.sleep(POLL_INTERVAL)
-    return {"status": "timeout", "message": f"Retrieval not ready after {MAX_POLL_TIME}s", "retrieval_id": retrieval_id}
-
-
-def _format_tree_node(node: dict[str, Any], indent: int = 0) -> str:
-    """Recursively format a tree node into a readable indented string."""
-    prefix = "  " * indent
-    title = node.get("title") or node.get("name") or "(untitled)"
-    node_id = node.get("node_id", "")
-    page = node.get("page_index", "")
-    summary = node.get("summary", "")
-
-    parts: list[str] = []
-    header = f"{prefix}- {title}"
-    if node_id:
-        header += f"  [node_id={node_id}]"
-    if page != "":
-        header += f"  (page {page})"
-    parts.append(header)
-
-    if summary:
-        parts.append(f"{prefix}  Summary: {summary}")
-
-    for child in node.get("nodes", []):
-        parts.append(_format_tree_node(child, indent + 1))
-
-    return "\n".join(parts)
-
-
-def _format_tree(data: dict[str, Any]) -> str:
-    """Format the full tree response into a readable string."""
-    tree = data.get("tree", data)
-
-    if isinstance(tree, list):
-        return "\n".join(_format_tree_node(node) for node in tree)
-
-    if isinstance(tree, dict) and ("nodes" in tree or "title" in tree or "name" in tree):
-        return _format_tree_node(tree)
-
-    return json.dumps(data, indent=2, ensure_ascii=False)
 
 class PageIndexParams(BaseModel):
     action: Literal[
@@ -105,7 +56,7 @@ class PageIndexParams(BaseModel):
         ...,
         description=(
             "Action to perform: "
-            "'submit' — upload a document (polls until tree is ready); "
+            "'submit' — upload a document (uses cache to skip re-uploads); "
             "'get_tree' — get the document's hierarchical tree; "
             "'query' — ask a question against a document (polls until answer is ready); "
             "'get_retrieval' — fetch a previous retrieval result; "
@@ -136,10 +87,15 @@ class PageIndexParams(BaseModel):
             raise ValueError("'retrieval_id' is required when action is 'get_retrieval'")
         return self
 
+
+# ---------------------------------------------------------------------------
+# Tool implementation
+# ---------------------------------------------------------------------------
+
 @tool(
     "page_index",
     "Index a document and query it using PageIndex vectorless RAG. "
-    "Supports: submit (upload & wait), get_tree, query (ask & wait for answer), "
+    "Supports: submit (upload & wait, cached), get_tree, query (ask & wait for answer), "
     "get_retrieval, status, list, delete, ocr.",
     PageIndexParams,
 )
@@ -153,70 +109,49 @@ def page_index(
 ) -> str:
     """Submit, inspect, or query documents via the PageIndex API."""
     try:
-        client = _get_client()
+        service = _get_service()
 
+        # ---- submit (with cache) -------------------------------------------
         if action == "submit":
-            data = client.submit_document(file_path=path)
-            new_doc_id: str = data.get("doc_id", "")
-            if not new_doc_id:
-                return json.dumps({"action": "submit", "error": "No doc_id returned", "raw": data}, ensure_ascii=False)
-
-            ready = _poll_tree_ready(client, new_doc_id)
-            status_msg = "ready" if ready else f"still processing (poll again later with 'status' action)"
+            cache = _get_cache()
+            doc_id = cache.get_or_submit(service, path)
             return json.dumps({
                 "action": "submit",
-                "doc_id": new_doc_id,
-                "status": status_msg,
+                "doc_id": doc_id,
+                "status": "ready",
                 "hint": "Use 'query' action with this doc_id to ask questions, or 'get_tree' to see the document structure.",
             }, ensure_ascii=False)
 
+        # ---- get_tree ------------------------------------------------------
         if action == "get_tree":
-            data = client.get_tree(doc_id=doc_id, node_summary=True)
-            status = data.get("status", "").lower()
-            if status not in ("completed", "done", "ready", ""):
-                ready = _poll_tree_ready(client, doc_id)
-                if ready:
-                    data = client.get_tree(doc_id=doc_id, node_summary=True)
-                else:
-                    return json.dumps({
-                        "action": "get_tree",
-                        "status": "processing",
-                        "message": f"Tree not ready after {MAX_POLL_TIME}s. Try again later.",
-                    }, ensure_ascii=False)
-
-            formatted = _format_tree(data)
+            formatted = service.get_formatted_tree(doc_id)
             return f"Document tree for {doc_id}:\n\n{formatted}"
 
+        # ---- query ---------------------------------------------------------
         if action == "query":
-            submit_data = client.submit_query(doc_id=doc_id, query=query)
-            rid: str = submit_data.get("retrieval_id", "")
-            if not rid:
-                return json.dumps({"action": "query", "error": "No retrieval_id returned", "raw": submit_data}, ensure_ascii=False)
-
-            result_data = _poll_retrieval(client, rid)
+            result_data = service.query_and_wait(doc_id, query)
             return json.dumps({
                 "action": "query",
                 "query": query,
-                "retrieval_id": rid,
                 "result": result_data,
             }, indent=2, ensure_ascii=False)
 
+        # ---- get_retrieval -------------------------------------------------
         if action == "get_retrieval":
-            data = client.get_retrieval(retrieval_id=retrieval_id)
+            data = service.get_retrieval(retrieval_id)
             return json.dumps({"action": "get_retrieval", "result": data}, indent=2, ensure_ascii=False)
 
+        # ---- status --------------------------------------------------------
         if action == "status":
-            data = client.get_document(doc_id=doc_id)
-            retrieval_ready = client.is_retrieval_ready(doc_id)
-            data["retrieval_ready"] = retrieval_ready
+            data = service.get_status(doc_id)
             return json.dumps({"action": "status", "result": data}, indent=2, ensure_ascii=False)
 
+        # ---- list ----------------------------------------------------------
         if action == "list":
-            data = client.list_documents()
-            docs = data.get("documents", [])
+            docs = service.list_documents()
             if not docs:
                 return "No documents found."
-            lines = [f"Found {data.get('total', len(docs))} document(s):\n"]
+            lines = [f"Found {len(docs)} document(s):\n"]
             for doc in docs:
                 lines.append(
                     f"  - {doc.get('name', '?')}  [doc_id={doc.get('id', '?')}]  "
@@ -224,18 +159,22 @@ def page_index(
                 )
             return "\n".join(lines)
 
+        # ---- delete --------------------------------------------------------
         if action == "delete":
-            data = client.delete_document(doc_id=doc_id)
+            data = service.delete_document(doc_id)
             return json.dumps({"action": "delete", "doc_id": doc_id, "result": data}, ensure_ascii=False)
 
+        # ---- ocr -----------------------------------------------------------
         if action == "ocr":
             fmt = ocr_format or "raw"
-            data = client.get_ocr(doc_id=doc_id, format=fmt)
+            data = service.get_ocr(doc_id, fmt)
             return json.dumps({"action": "ocr", "format": fmt, "result": data}, indent=2, ensure_ascii=False)
 
         return f"Error: Unknown action '{action}'"
 
     except RuntimeError as e:
         return str(e)
+    except TimeoutError as e:
+        return f"Timeout: {e}"
     except Exception as e:
         return f"Error ({type(e).__name__}): {e}"
