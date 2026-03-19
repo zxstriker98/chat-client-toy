@@ -14,6 +14,7 @@ import uuid
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from providers.OllamaClient import AsyncOllamaClient
+# Note: server uses asyncio.new_event_loop() per request to call async client
 
 
 def load_restaurant(slug: str) -> dict:
@@ -113,8 +114,7 @@ def main():
 
     restaurant = load_restaurant(args.restaurant) if args.restaurant else None
     server = HTTPServer(("0.0.0.0", args.port), create_handler(args.model, restaurant))
-    import sys
-    print(f"🧠 chat-client-toy gateway on http://localhost:{args.port}/v1/chat/completions", flush=True)
+    print(f"   chat-client-toy gateway on http://localhost:{args.port}/v1/chat/completions", flush=True)
     print(f"   Model: {args.model}", flush=True)
     if restaurant:
         print(f"   Restaurant: {restaurant['name']}", flush=True)

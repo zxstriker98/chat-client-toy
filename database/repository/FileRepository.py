@@ -24,16 +24,5 @@ class FileRepository:
     def get_all(self) -> list[type[FileRecord]]:
         return self.session.query(FileRecord).all()
 
-    def find_by_name(self, search_name: str):
-        return self.session.query(FileRecord).filter(FileRecord.file_name.ilike(f"%{search_name}%")).all()
-
-    def delete(self, file_hash: str) -> bool:
-        record: FileRecord | None = self.session.get(FileRecord, file_hash)
-        if record:
-            self.session.delete(record)
-            self.session.commit()
-            return True
-        return False
-
     def count(self) -> int:
         return self.session.query(FileRecord).count()

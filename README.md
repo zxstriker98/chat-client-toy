@@ -8,7 +8,7 @@ A multi-provider LLM chat client with streaming and tool-calling support. One in
 main.py                         # CLI entry point (--model, --system-prompt, --stream)
 │
 ├── providers/
-│   ├── base.py                 # BaseLLMClient / AsyncBaseLLMClient (abstract)
+│   ├── base.py                 # AsyncBaseLLMClient (abstract)
 │   ├── models.py               # Conversation & tool schemas (Pydantic)
 │   ├── openai_compat_base.py   # Shared base for OpenAI-compatible APIs
 │   ├── OpenAIClient.py         # OpenAI provider
@@ -21,9 +21,7 @@ main.py                         # CLI entry point (--model, --system-prompt, --s
 └── tools/
     ├── tools.py                # ToolRegistry + @tool decorator
     ├── readFile.py             # read_file tool
-    ├── runBash.py              # run_bash tool
-    ├── webSearch.py            # web_search tool (Brave Search API)
-    └── pageIndex.py            # page_index tool (PageIndex vectorless RAG)
+    └── runBash.py              # run_bash tool
 ```
 
 ## Setup
@@ -63,11 +61,10 @@ GROQ_API_KEY="gsk-your-groq-key-here"
 OLLAMA_BASE_URL="http://localhost:11434/v1"
 OLLAMA_API_KEY="ollama"
 
-# Optional — only needed for the web_search tool
-BRAVE_SEARCH_API_KEY="your-brave-search-key-here"
-
-# Optional — only needed for the page_index tool (PageIndex RAG)
+# Optional — only needed for the PageIndex challenges and chunk ingestion
 PAGEINDEX_API_KEY="your-pageindex-api-key-here"
+# Optional — override for self-hosted PageIndex (default: https://api.pageindex.ai)
+# PAGEINDEX_BASE_URL="http://localhost:8080"
 ```
 
 > **Note:** `.env` is in `.gitignore` — your keys won't be committed.
@@ -178,57 +175,140 @@ The chat client can use tools during conversation:
 |---------------|----------------------------------------------------|------------------------|
 | `read_file`   | Read contents of a local file (truncated at 100 KB) | —                      |
 | `run_bash`    | Execute a bash command (30s timeout)               | —                      |
-| `web_search`  | Search the web via Brave Search                    | `BRAVE_SEARCH_API_KEY` |
-| `page_index`  | Index & query documents using PageIndex RAG        | `PAGEINDEX_API_KEY`    |
 
 Tools are auto-registered via the `@tool` decorator and made available to all providers.
 
-### PageIndex Tool
+## RAG Pipeline (Chunk Context)
 
-The `page_index` tool provides document indexing and question-answering via [PageIndex](https://pageindex.ai/) vectorless RAG. Upload a PDF or document, and then ask natural-language questions against it.
+The chat client supports local document-grounded Q&A via `--chunks`. Documents are pre-indexed through PageIndex, stored in SQLite, and searched at query time using BM25.
 
-**Actions:**
-
-| Action          | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| `submit`        | Upload a document and wait until it's indexed (auto-polls for readiness)    |
-| `get_tree`      | Get the document's hierarchical structure as a formatted tree with summaries |
-| `query`         | Ask a question against a document (auto-polls until the answer is ready)    |
-| `get_retrieval` | Fetch a previous retrieval result by ID                                     |
-| `status`        | Check a document's processing status                                        |
-| `list`          | List all indexed documents                                                  |
-| `delete`        | Delete an indexed document                                                  |
-| `ocr`           | Get OCR text for a document (`raw`, `page`, or `node` format)              |
-
-**Example conversation flow:**
+### Flow
 
 ```
-> Index sample.pdf and tell me what it's about
-
-[Tool call: page_index({"action": "submit", "path": "sample.pdf"})]
-→ doc_id: abc123, status: ready
-
-[Tool call: page_index({"action": "get_tree", "doc_id": "abc123"})]
-→ Document tree for abc123:
-  - Introduction  [node_id=n1]  (page 1)
-    Summary: Overview of the report...
-  - Methodology  [node_id=n2]  (page 3)
-    Summary: Research methods used...
-
-> What does chapter 2 say about methodology?
-
-[Tool call: page_index({"action": "query", "doc_id": "abc123", "query": "What does chapter 2 say about methodology?"})]
-→ The methodology section describes...
+┌─────────────────────────────────────────────────────────────────────┐
+│ 📥 OFFLINE INGESTION                                               │
+│                                                                     │
+│  PDF ──→ PageIndex API ──→ get_tree(doc_id, node_summary=True)     │
+│                   │              │                                   │
+│                   │         tree nodes with:                         │
+│                   │           • title, node_id, page_index           │
+│                   │           • summary (AI-generated)               │
+│                   │           • text (OCR content)                   │
+│                   │           • child nodes (hierarchy)              │
+│                   │              │                                   │
+│                   ▼              ▼                                   │
+│              doc_id        Build enriched node_path:                 │
+│                            "Chapter (covers A, B, C)                 │
+│                               > Section (covers X, Y)               │
+│                                 > Subsection"                       │
+│                                      │                              │
+│                                      ▼                              │
+│                            ChunkRecord(path, summary, text)         │
+│                                      │                              │
+│                                      ▼                              │
+│                              SQLite chunks table                    │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│ 🔧 STARTUP  (main.py --chunks)                                     │
+│                                                                     │
+│  Load all ChunkRecords from SQLite                                 │
+│       │                                                             │
+│       ▼                                                             │
+│  build_index() ──→ tokenize every chunk                            │
+│                ──→ compute IDF per word                             │
+│                ──→ compute avg doc length                           │
+│                ──→ BM25 index ready                                 │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│ 💬 PER-QUERY                                                       │
+│                                                                     │
+│  User: "How does gradient descent converge?"                       │
+│       │                                                             │
+│       ▼                                                             │
+│  🔍 BM25 Search                                                    │
+│    1. tokenize → ['gradient', 'descent', 'converge']               │
+│    2. Score each chunk:                                             │
+│       IDF(w) × tf·(k₁+1) / (tf + k₁·(1 − b + b·dl/avgdl))       │
+│    3. Return top-K by score                                         │
+│       │                                                             │
+│       ▼                                                             │
+│  📋 Format Context (path → summary → text)                         │
+│                                                                     │
+│    [Relevant document context]                                      │
+│    --- [Intro to Optimization (covers Basic Terminology,            │
+│         Unconstrained Optimization, Stochastic gradient, ...)       │
+│           > Unconstrained Optimization (covers Conditions           │
+│             for optimality, Convex sets, Rate of convergence)       │
+│               > Line search] (page 58) ---                          │
+│    Summary: Details convergence analysis for optimization           │
+│    algorithms, deriving general and strongly convex rates.          │
+│                                                                     │
+│    F(x_{t+1}) - F(x*) ≤ F(x_t) - F(x*) - C|∇F(x_t)|² ...       │
+│    [End of context]                                                 │
+│       │                                                             │
+│       ▼                                                             │
+│  📝 Enriched query = context + original question                    │
+│       │                                                             │
+│       ▼                                                             │
+│  🤖 LLM (GPT-5.2 / Claude / etc.)                                 │
+│       │                                                             │
+│       ▼                                                             │
+│  ✅ Answer grounded in document content                             │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-Key improvements over raw API usage:
-- **Auto-polling** — `submit` and `query` wait for results instead of returning immediately with a pending status
-- **Formatted tree output** — hierarchical structure is displayed as a readable indented tree instead of raw JSON
-- **Node summaries** — tree nodes include AI-generated summaries of each section
+### Usage
+
+```bash
+# Chat with document-grounded context
+uv run python main.py --model gpt-5.2 --chunks
+
+# Custom DB and chunk count
+uv run python main.py --model gpt-5.2 --chunks --chunk-db data/pageindex_cache.db --chunk-top-k 3
+```
+
+### Ingestion CLI
+
+Add new PDFs to the chunk database using `ingest.py`:
+
+```bash
+# Ingest a single PDF (uploads to PageIndex + extracts tree → chunks → DB)
+uv run python ingest.py data/report.pdf
+
+# Ingest multiple PDFs
+uv run python ingest.py data/*.pdf
+
+# List all ingested documents
+uv run python ingest.py --list
+
+# Re-ingest (clear old chunks, re-fetch from PageIndex)
+uv run python ingest.py data/report.pdf --reingest
+
+# Skip upload (reuse existing doc_id — useful when PageIndex limit is reached)
+uv run python ingest.py data/report.pdf --reingest --skip-upload
+
+# Custom database path
+uv run python ingest.py data/report.pdf --db my_chunks.db
+
+# Clear all chunks
+uv run python ingest.py --clear
+```
+
+### Node Path Format
+
+Ancestor nodes include their children as hints, giving the LLM structural context:
+
+```
+General Notation (covers Linear algebra, Topology, Calculus, Probability theory)
+  > Topology (covers Open and closed sets, Compact sets, Metric spaces)
+    > Compact sets
+```
 
 ## Design Patterns
 
-- **Adapter Pattern** — Each provider normalizes a different API (OpenAI, Anthropic, Ollama, Grok, Groq) to one interface (`BaseLLMClient`)
+- **Adapter Pattern** — Each provider normalizes a different API (OpenAI, Anthropic, Ollama, Grok, Groq) to one interface (`AsyncBaseLLMClient`)
 - **Strategy Pattern** — Swap providers at runtime via `--model` flag
 - **Factory Pattern** — `ProviderFactory.from_model()` picks the right provider class
 - **Template Method** — `generate_response()` defines the flow; subclasses implement `_call_api()`, `_extract_tool_calls()`, etc.
@@ -240,15 +320,11 @@ If the provider is **OpenAI-compatible** (most are), just create a new file foll
 
 ```python
 import os
-from openai import OpenAI, AsyncOpenAI
-from providers.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatClient
+from openai import AsyncOpenAI
+from providers.openai_compat_base import AsyncOpenAICompatClient
 
 BASE_URL = os.getenv("MY_PROVIDER_BASE_URL", "https://api.example.com/v1")
 API_KEY = os.getenv("MY_PROVIDER_API_KEY", "")
-
-class MyProviderClient(OpenAICompatClient):
-    def _create_client(self) -> OpenAI:
-        return OpenAI(base_url=BASE_URL, api_key=API_KEY)
 
 class AsyncMyProviderClient(AsyncOpenAICompatClient):
     def _create_client(self) -> AsyncOpenAI:

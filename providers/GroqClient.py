@@ -1,16 +1,6 @@
 import os
-from openai import OpenAI, AsyncOpenAI
-from providers.openai_compat_base import OpenAICompatClient, AsyncOpenAICompatClient
-
-
-class GroqClient(OpenAICompatClient):
-    """Synchronous Groq client (OpenAI-compatible API)."""
-
-    def _create_client(self) -> OpenAI:
-        return OpenAI(
-            base_url=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
-            api_key=os.getenv("GROQ_API_KEY", ""),
-        )
+from openai import AsyncOpenAI
+from providers.openai_compat_base import AsyncOpenAICompatClient
 
 
 class AsyncGroqClient(AsyncOpenAICompatClient):

@@ -4,7 +4,6 @@ from concurrent.futures import ThreadPoolExecutor, Future, TimeoutError as Futur
 from pathlib import Path
 from typing import Any, Callable
 
-# Maximum time (seconds) any single tool invocation may run before being aborted.
 DEFAULT_TOOL_TIMEOUT: int = 300
 
 MAX_TOOL_RESULT_LENGTH: int = 40_000
