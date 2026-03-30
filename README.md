@@ -248,7 +248,7 @@ AI:   [calls get_place_details()]
 1. Get a Google Places API key from [Google Cloud Console](https://console.cloud.google.com/)
 2. Enable **Places API (New)** in your project
 3. Add `GOOGLE_PLACES_API_KEY=your_key` to `.env`
-4. Add your `place_id` to `restaurants/<name>/config.json`
+4. Add your `place_id` to `restaurants/my-delhi/config.json`
 
 ## Advanced Features
 
@@ -334,7 +334,7 @@ The system excels at sophisticated analysis across multiple documents:
 │   ├── runBash.py             # Execute bash commands tool
 │   └── google_place_details.py # Google Places API — live restaurant details & reviews
 ├── restaurants/           # Restaurant configurations
-│   └── delhi-darbar/
+│   └── my-delhi/
 │       └── config.json        # Restaurant identity + Google Place ID
 └── data/                  # Document storage
 

@@ -51,7 +51,7 @@ PRICE_MAP = {
 }
 
 # Load place_id from the restaurant config file
-_CONFIG_PATH = Path(__file__).parent.parent / "restaurants" / "delhi-darbar" / "config.json"
+_CONFIG_PATH = Path(__file__).parent.parent / "restaurants" / "my-delhi" / "config.json"
 
 
 def _load_place_id() -> str:
