@@ -10,6 +10,8 @@ A production-ready Retrieval-Augmented Generation (RAG) system that combines loc
 - **Advanced RAG**: Semantic chunk retrieval with LLM-based reranking
 - **Cross-Document Queries**: Complex analysis across multiple documents
 - **Streaming Support**: Real-time response streaming for better UX
+- **Tool Calling**: Extensible tool system — LLM can call tools like file reading, bash, and Google Places
+- **Restaurant Mode**: Built-in restaurant assistant mode with live Google Places integration
 
 ### 📚 Document Processing
 - **Format**: PDF documents
@@ -61,6 +63,9 @@ GROQ_API_KEY=your_groq_key
 
 # Optional: For PageIndex processing (defaults to OPENAI_API_KEY)
 CHATGPT_API_KEY=your_openai_key
+
+# Required for Google Places tool (restaurant details, reviews, hours)
+GOOGLE_PLACES_API_KEY=your_google_places_key
 ```
 
 ## Usage
@@ -199,6 +204,52 @@ python main.py --chunks \
 python ingest.py data/doc.pdf --model claude-opus-4-20250514
 ```
 
+## Tools
+
+The LLM can call tools during a conversation. Tools are auto-discovered from the `tools/` directory.
+
+### Built-in Tools
+
+| Tool | Description |
+|------|-------------|
+| `read_file` | Read contents of any file in the workspace |
+| `run_bash` | Execute bash commands and return output |
+| `get_place_details` | Fetch live restaurant info from Google Places API (address, hours, rating, reviews) |
+
+### Adding a New Tool
+
+```python
+# tools/my_tool.py
+from pydantic import BaseModel, Field
+from tools.tools import tool
+
+class MyToolParams(BaseModel):
+    query: str = Field(description="What to search for")
+
+@tool("my_tool", "Description of what this tool does", MyToolParams)
+def my_tool(query: str) -> str:
+    # Always return a string
+    return f"Result for: {query}"
+```
+
+That's it! The tool is automatically discovered and registered on startup.
+
+### Google Places Tool
+
+The `get_place_details` tool fetches live data for the configured restaurant:
+
+```
+User: "Are you open right now?"
+AI:   [calls get_place_details()]
+      → Returns: hours, open/closed status, address, rating, reviews
+```
+
+**Setup:**
+1. Get a Google Places API key from [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable **Places API (New)** in your project
+3. Add `GOOGLE_PLACES_API_KEY=your_key` to `.env`
+4. Add your `place_id` to `restaurants/<name>/config.json`
+
 ## Advanced Features
 
 ### Complex Cross-Document Queries
@@ -278,6 +329,13 @@ The system excels at sophisticated analysis across multiple documents:
 │   ├── page_index.py
 │   └── utils.py
 ├── tools/                 # Tool calling support
+│   ├── tools.py               # ToolRegistry + @tool decorator + autodiscovery
+│   ├── readFile.py            # Read file contents tool
+│   ├── runBash.py             # Execute bash commands tool
+│   └── google_place_details.py # Google Places API — live restaurant details & reviews
+├── restaurants/           # Restaurant configurations
+│   └── delhi-darbar/
+│       └── config.json        # Restaurant identity + Google Place ID
 └── data/                  # Document storage
 
 ```
