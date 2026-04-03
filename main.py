@@ -112,7 +112,7 @@ async def main(args: Namespace) -> None:
         if chunk_ctx:
             try:
                 # Search for relevant chunks
-                rag_results = await chunk_ctx.search(query, top_k=8)
+                rag_results = await chunk_ctx.search(query, top_k=10)
 
                 if rag_results:
                     print(f"  [Context attached from {len(rag_results)} chunk(s)]")
