@@ -648,11 +648,20 @@ def add_node_text_with_labels(node, pdf_pages):
 
 
 async def generate_node_summary(node, model=None):
-    prompt = f"""You are given a part of a document, your task is to generate a description of the partial document about what are main points covered in the partial document.
+    prompt = f"""You are given a part of a document. Your task is to generate a structured summary that preserves ALL specific factual details from the text.
 
-    Partial Document Text: {node['text']}
-    
-    Directly return the description, do not include any other text.
+CRITICAL RULES:
+- ALWAYS preserve prices exactly as they appear (e.g. £7.50, £12.00)
+- ALWAYS preserve dish names, product names, and specific items exactly
+- ALWAYS preserve quantities, measurements, and numerical values
+- ALWAYS preserve allergen and dietary information (v, vg, GF, etc.)
+- Format menu items as: "Item Name — £price: description"
+- If you cannot find a price for an item, write "price not listed"
+- Do NOT generalise or abstract — be specific and factual
+
+Partial Document Text: {node['text']}
+
+Return a structured factual summary preserving all names, prices and details. Do not include any other text.
     """
     response = await ChatGPT_API_async(model, prompt)
     return response

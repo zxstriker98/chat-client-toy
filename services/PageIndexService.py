@@ -30,7 +30,7 @@ class PageIndexService:
             if_add_node_id="yes",
             if_add_node_summary="yes",
             if_add_doc_description="no",
-            if_add_node_text="no"
+            if_add_node_text="yes"   # Include raw page text so prices/details are preserved
         )
 
     def process_document(self, file_path: str) -> dict:

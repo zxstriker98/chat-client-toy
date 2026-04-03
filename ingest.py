@@ -67,10 +67,14 @@ def flatten_tree(nodes: list, ancestors: list = None, file_hash_val: str = "") -
         node_id = node.get("node_id", "")
         page = node.get("page_index", "")
         summary = node.get("summary", "")
+        raw_text = node.get("text", "")  # Raw page text (includes prices!)
         
         # Build breadcrumb path
         path_parts = ancestors + [title]
         path = " > ".join(path_parts)
+
+        # Prefer raw text (has prices/details) → fallback to summary → fallback to title
+        chunk_text = raw_text or summary or title
         
         # Create chunk record
         chunk = ChunkRecord(
@@ -80,7 +84,7 @@ def flatten_tree(nodes: list, ancestors: list = None, file_hash_val: str = "") -
             node_title=title,
             page_index=page if page != "" else None,
             node_summary=summary or "",
-            text=summary or title,  # Use summary as text, fallback to title
+            text=chunk_text,
             chunk_index=len(chunks),
         )
         chunks.append(chunk)
