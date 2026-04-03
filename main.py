@@ -1,5 +1,4 @@
 import argparse
-import json
 import sys
 from argparse import ArgumentParser, Namespace
 
