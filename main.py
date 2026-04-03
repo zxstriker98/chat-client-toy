@@ -1,10 +1,10 @@
 import argparse
+import asyncio
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
+from dotenv import load_dotenv
 
 from providers import AsyncBaseLLMClient
-import asyncio
-from dotenv import load_dotenv
 from providers.ProviderFactory import ProviderFactory
 from providers.errors.ProviderError import (
     ProviderError,
@@ -15,6 +15,14 @@ from providers.errors.ProviderError import (
     ProviderApiError,
 )
 from services.PromptBuilder import PromptBuilder
+from tools.tools import registry
+
+# ── Constants ──────────────────────────────────────────────────────────────
+DEFAULT_MODEL = "gpt-5.2"
+DEFAULT_MAX_PROMPT_CHARS = 32000
+DEFAULT_CHUNK_DB = "data/pageindex_cache.db"
+DEFAULT_RANKER_MODEL = "gpt-4.1-mini"
+RAG_TOP_K = 10
 
 
 async def main(args: Namespace) -> None:
@@ -40,8 +48,6 @@ async def main(args: Namespace) -> None:
         print(f"  [Bootstrap loaded from {args.bootstrap}]")
 
     # ── Build the system prompt ───────────────────────────────────────────────
-    from tools.tools import registry
-
     # Filter tools if --tools is specified
     if args.tools:
         requested = set(args.tools)
@@ -112,7 +118,7 @@ async def main(args: Namespace) -> None:
         if chunk_ctx:
             try:
                 # Search for relevant chunks
-                rag_results = await chunk_ctx.search(query, top_k=10)
+                rag_results = await chunk_ctx.search(query, top_k=RAG_TOP_K)
 
                 if rag_results:
                     print(f"  [Context attached from {len(rag_results)} chunk(s)]")
@@ -158,11 +164,11 @@ async def main(args: Namespace) -> None:
 
 if __name__ == "__main__":
     load_dotenv()
-    parser: ArgumentParser = ArgumentParser()
+    parser: argparse.ArgumentParser = argparse.ArgumentParser()
 
     # ── LLM settings ──────────────────────────────────────────────────────────
     parser.add_argument("--stream", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--model", default="gpt-5.2")
+    parser.add_argument("--model", default=DEFAULT_MODEL)
 
     # ── PromptBuilder settings ────────────────────────────────────────────────
     parser.add_argument("--identity", required=True,
@@ -171,7 +177,7 @@ if __name__ == "__main__":
                         help="Prompt assembly mode: full (all sections), minimal (identity+datetime+tools), none (empty)")
     parser.add_argument("--tools", nargs="*", default=None,
                         help="Whitelist of tools to enable e.g. --tools get_place_details read_file (default: all tools)")
-    parser.add_argument("--max-prompt-chars", type=int, default=32000,
+    parser.add_argument("--max-prompt-chars", type=int, default=DEFAULT_MAX_PROMPT_CHARS,
                         help="Maximum characters in the assembled system prompt (default: 32000)")
     parser.add_argument("--bootstrap", default=None,
                         help="Directory to scan for AGENTS.md workspace rules (e.g. '.')")
@@ -181,10 +187,10 @@ if __name__ == "__main__":
     # ── RAG / Chunk settings ──────────────────────────────────────────────────
     parser.add_argument("--chunks", action=argparse.BooleanOptionalAction, default=False,
                         help="Enable chunk context (RAG) from the local chunk database")
-    parser.add_argument("--chunk-db", default="data/pageindex_cache.db",
+    parser.add_argument("--chunk-db", default=DEFAULT_CHUNK_DB,
                         help="Path to the chunk SQLite database")
-    parser.add_argument("--ranker-model", default="gpt-4.1-mini",
+    parser.add_argument("--ranker-model", default=DEFAULT_RANKER_MODEL,
                         help="LLM model used to rank chunk relevance (default: gpt-4.1-mini)")
 
-    args: Namespace = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
     asyncio.run(main(args))

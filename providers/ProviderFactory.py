@@ -29,6 +29,10 @@ class ProviderFactory:
         instructions: str = "",
         tool_registry: ToolRegistry = registry,
     ) -> AsyncBaseLLMClient:
+        """Resolve the provider from model name prefix and return an initialized client.
+        
+        Falls back to AsyncOllamaClient if no prefix matches.
+        """
         for prefix, provider in MODEL_PREFIXES:
             if model_name.lower().startswith(prefix.lower()):
                 client_class: type[AsyncBaseLLMClient] = MODEL_PROVIDERS[provider]

@@ -1,11 +1,14 @@
 import os
+import json
 import requests
 from pathlib import Path
 from pydantic import BaseModel, Field
 from tools.tools import tool
 
-_CONFIG_PATH = Path(__file__).parent.parent / "restaurants" / "my-delhi" / "config.json"
+_RESTAURANT_DIR = os.environ.get("RESTAURANT_DIR", "my-delhi")
+_CONFIG_PATH = Path(__file__).parent.parent / "restaurants" / _RESTAURANT_DIR / "config.json"
 _PLACES_API_BASE = "https://places.googleapis.com/v1"
+MAX_PHOTOS_LIMIT = 10
 
 
 class GetPlacePhotosParams(BaseModel):
@@ -15,15 +18,24 @@ class GetPlacePhotosParams(BaseModel):
 
 @tool("get_place_photos", "Get photo URLs for this restaurant from Google Places", GetPlacePhotosParams)
 def get_place_photos(max_photos: int = 5, max_width_px: int = 800) -> str:
+    """Get photo URLs for the restaurant from Google Places API.
+    
+    Args:
+        max_photos: Maximum number of photo URLs to return (1-10)
+        max_width_px: Maximum width of photos in pixels
+        
+    Returns:
+        str: Formatted string with photo URLs and metadata, or error message
+    """
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY")
     if not api_key:
         return "Configuration error: GOOGLE_PLACES_API_KEY not set in environment"
 
     # Load place_id from config
-    import json
     try:
         config = json.loads(_CONFIG_PATH.read_text())
         place_id = config.get("place_id")
+        restaurant_name = config.get("name", "This Restaurant")
         if not place_id:
             return "Configuration error: place_id not found in config.json"
     except Exception as e:
@@ -48,7 +60,7 @@ def get_place_photos(max_photos: int = 5, max_width_px: int = 800) -> str:
         return "No photos found for this restaurant."
 
     # Step 2: Resolve photo URLs (follow redirects)
-    max_photos = min(max_photos, 10, len(photos))
+    max_photos = min(max_photos, MAX_PHOTOS_LIMIT, len(photos))
     photo_urls = []
 
     for photo in photos[:max_photos]:
@@ -78,7 +90,7 @@ def get_place_photos(max_photos: int = 5, max_width_px: int = 800) -> str:
         return "Could not resolve photo URLs."
 
     # Step 3: Format result
-    result = f"📸 Photos for My Delhi Newcastle ({len(photo_urls)} found):\n\n"
+    result = f"📸 Photos for {restaurant_name} ({len(photo_urls)} found):\n\n"
     for i, p in enumerate(photo_urls, 1):
         result += f"{i}. {p['url']}\n"
         result += f"   📐 {p['width']}x{p['height']}px | 📷 {p['author']}\n\n"

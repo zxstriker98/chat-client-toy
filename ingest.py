@@ -9,6 +9,7 @@ Usage:
     python ingest.py data/*.pdf --model gpt-4o
 """
 
+import argparse
 import json
 import hashlib
 from pathlib import Path
@@ -23,9 +24,19 @@ from database.repository.FileRepository import FileRepository
 from database.repository.ChunkRepository import ChunkRepository
 from services.PageIndexService import PageIndexService
 
+# Constants for menu detection
+MENU_KEYWORDS = ["menu", "food", "drink", "price"]
+
 
 def file_hash(path: str) -> str:
-    """Compute MD5 hash of a file."""
+    """Calculate SHA-256 hash of a file for deduplication.
+    
+    Args:
+        path: File path to hash
+        
+    Returns:
+        str: Hexadecimal SHA-256 hash of the file
+    """
     h = hashlib.md5()
 
     with open(path, "rb") as f:
@@ -35,9 +46,18 @@ def file_hash(path: str) -> str:
 
 
 def process_pdf_local(pdf_path: str, service: PageIndexService, summary_prompt: str = None) -> dict:
-    """
-    Process a PDF using PageIndex library.
-    Returns the tree structure.
+    """Process a PDF using PageIndex service with optional custom prompt.
+    
+    Args:
+        pdf_path: Path to the PDF file to process
+        service: PageIndexService instance configured with processing options
+        summary_prompt: Optional custom prompt for text summarization
+        
+    Returns:
+        dict: Tree structure containing processed document hierarchy
+        
+    Raises:
+        Exception: If PDF processing fails
     """
     print(f"  Processing {Path(pdf_path).name}...")
     
@@ -307,7 +327,6 @@ def ingest_pdf(
 def main():
     load_dotenv()
     
-    import argparse
     parser = argparse.ArgumentParser(description="Ingest PDFs using PageIndex processing")
     parser.add_argument("files", nargs="*", help="PDF files to ingest")
     parser.add_argument("--db", default="data/pageindex_cache.db", help="Database path")
@@ -379,7 +398,7 @@ def main():
                 # Faster but less accurate for graphic/designed PDFs
                 is_menu = args.menu or any(
                     kw in Path(pdf).name.lower()
-                    for kw in ["menu", "food", "drink", "price"]
+                    for kw in MENU_KEYWORDS
                 )
                 summary_prompt = MENU_SUMMARY_PROMPT if is_menu else None
                 if is_menu:

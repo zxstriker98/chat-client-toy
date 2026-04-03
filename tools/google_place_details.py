@@ -51,11 +51,20 @@ PRICE_MAP = {
 }
 
 # Load place_id from the restaurant config file
-_CONFIG_PATH = Path(__file__).parent.parent / "restaurants" / "my-delhi" / "config.json"
+_RESTAURANT_DIR = os.environ.get("RESTAURANT_DIR", "my-delhi")
+_CONFIG_PATH = Path(__file__).parent.parent / "restaurants" / _RESTAURANT_DIR / "config.json"
 
 
 def _load_place_id() -> str:
-    """Load the place_id from the restaurant config file."""
+    """Load place_id from the restaurant configuration file.
+    
+    Returns:
+        str: The place_id from config.json
+        
+    Raises:
+        FileNotFoundError: If config file doesn't exist
+        ValueError: If place_id is not found in config
+    """
     try:
         with open(_CONFIG_PATH, "r") as f:
             config = json.load(f)
@@ -109,7 +118,15 @@ def _call_place_details_api(place_id: str, include_reviews: bool) -> dict:
 # ──────────────────────────────────────────
 
 def _format_place_details(data: dict, include_reviews: bool) -> str:
-    """Format raw API response into a readable string for the LLM."""
+    """Format raw API response into a readable string for the LLM.
+    
+    Args:
+        data: Raw API response dictionary from Google Places API
+        include_reviews: Whether to include review information in output
+        
+    Returns:
+        str: Formatted human-readable text with place details
+    """
 
     lines = []
 

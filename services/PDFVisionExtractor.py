@@ -19,6 +19,9 @@ from pathlib import Path
 import pymupdf
 from openai import OpenAI
 
+# Constants for PDF processing and API calls
+DEFAULT_PDF_ZOOM = 2.0
+VISION_API_MAX_TOKENS = 4096
 
 ALLERGEN_PROMPT = """This is a page from a restaurant menu PDF. It contains an allergen information table.
 
@@ -38,7 +41,7 @@ Return ONLY the markdown table and dietary notes. No other text."""
 class PDFVisionExtractor:
     """Extract structured data from PDF pages using GPT-4o Vision API."""
 
-    def __init__(self, model: str = "gpt-4o", zoom: float = 2.0):
+    def __init__(self, model: str = "gpt-4o", zoom: float = DEFAULT_PDF_ZOOM):
         """
         Args:
             model: Vision-capable model to use (default: gpt-4o)
@@ -50,7 +53,11 @@ class PDFVisionExtractor:
 
     def _render_page_as_base64(self, pdf_path: str, page_num: int) -> str:
         """Render a PDF page as a base64-encoded PNG image."""
-        doc = pymupdf.open(pdf_path)
+        try:
+            doc = pymupdf.open(pdf_path)
+        except Exception as e:
+            raise ValueError(f"Failed to open PDF: {e}")
+            
         if page_num >= len(doc):
             raise ValueError(f"Page {page_num} does not exist (PDF has {len(doc)} pages)")
 
@@ -100,7 +107,7 @@ class PDFVisionExtractor:
                     ]
                 }
             ],
-            max_tokens=4096
+            max_tokens=VISION_API_MAX_TOKENS
         )
 
         return response.choices[0].message.content

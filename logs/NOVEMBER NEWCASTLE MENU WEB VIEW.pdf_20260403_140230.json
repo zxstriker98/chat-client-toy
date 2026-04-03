@@ -1,0 +1,108 @@
+[
+  {
+    "total_page_number": 2
+  },
+  {
+    "total_token": 2239
+  },
+  {
+    "toc_content": null,
+    "toc_page_list": [],
+    "page_index_given_in_toc": "no"
+  },
+  {
+    "message": "len(group_texts): 1"
+  },
+  {
+    "message": "generate_toc: [{'structure': '1', 'title': '10ASLAM TANDOORI CHOPS', 'physical_index': '<physical_index_1>'}, {'structure': '1.1', 'title': 'TANDOORI SOYA CHOPS', 'physical_index': '<physical_index_1>'}, {'structure': '1.2', 'title': 'PAPADAM BASKET WITH DIPS', 'physical_index': '<physical_index_1>'}, {'structure': '1.3', 'title': 'GOL GAPPA', 'physical_index': '<physical_index_1>'}, {'structure': '1.4', 'title': 'SWEET POTATO FRIES', 'physical_index': '<physical_index_1>'}, {'structure': '1.5', 'title': 'TANDOORI HOUSE SALAD', 'physical_index': '<physical_index_1>'}, {'structure': '1.6', 'title': 'CHATORI CHICKPEA BOWL', 'physical_index': '<physical_index_1>'}, {'structure': '1.7', 'title': 'TRIP TO DELHI', 'physical_index': '<physical_index_1>'}, {'structure': '1.8', 'title': 'ROADSIDE FEAST', 'physical_index': '<physical_index_1>'}, {'structure': '1.9', 'title': 'STREET FEAST', 'physical_index': '<physical_index_1>'}, {'structure': '1.10', 'title': 'CANTEEN THALI TRAY', 'physical_index': '<physical_index_1>'}, {'structure': '1.11', 'title': 'DELHI CHAI', 'physical_index': '<physical_index_1>'}, {'structure': '1.12', 'title': 'NAANWICH', 'physical_index': '<physical_index_1>'}, {'structure': '1.13', 'title': 'ROADSIDE CHICKEN BHUNA', 'physical_index': '<physical_index_1>'}, {'structure': '1.14', 'title': '1947 BLACK DAL', 'physical_index': '<physical_index_1>'}, {'structure': '1.15', 'title': 'CHETTINAD VEG KARI', 'physical_index': '<physical_index_1>'}, {'structure': '1.16', 'title': 'DELHI STREET WRAP', 'physical_index': '<physical_index_1>'}, {'structure': '2', 'title': 'GLASS 6 | BOTTLE 29', 'physical_index': '<physical_index_2>'}, {'structure': '2.1', 'title': 'KOPPABERG MIXED FRUIT ALCOHOL FREE CIDER', 'physical_index': '<physical_index_2>'}, {'structure': '2.2', 'title': 'PERONI GLUTEN FREE LAGER', 'physical_index': '<physical_index_2>'}, {'structure': '2.3', 'title': 'SCHWEPPES 200ml Premium | Slimline | Lemonade | Ginger Ale', 'physical_index': '<physical_index_2>'}, {'structure': '2.4', 'title': 'COCA-COLA 200ml Classic | Zero', 'physical_index': '<physical_index_2>'}, {'structure': '2.5', 'title': 'Creamy house-made yoghurt drink bursting with rich, sweet mango flavour', 'physical_index': '<physical_index_2>'}, {'structure': '2.6', 'title': 'A sweet spiced milk chai freshly brewed in-house', 'physical_index': '<physical_index_2>'}, {'structure': '2.7', 'title': 'THE AMBER SOLSTICE', 'physical_index': '<physical_index_2>'}, {'structure': '2.8', 'title': 'SANTA\u2019S POTION', 'physical_index': '<physical_index_2>'}]"
+  },
+  {
+    "message": "convert_physical_index_to_int: [{'structure': '1', 'title': '10ASLAM TANDOORI CHOPS', 'physical_index': 1}, {'structure': '1.1', 'title': 'TANDOORI SOYA CHOPS', 'physical_index': 1}, {'structure': '1.2', 'title': 'PAPADAM BASKET WITH DIPS', 'physical_index': 1}, {'structure': '1.3', 'title': 'GOL GAPPA', 'physical_index': 1}, {'structure': '1.4', 'title': 'SWEET POTATO FRIES', 'physical_index': 1}, {'structure': '1.5', 'title': 'TANDOORI HOUSE SALAD', 'physical_index': 1}, {'structure': '1.6', 'title': 'CHATORI CHICKPEA BOWL', 'physical_index': 1}, {'structure': '1.7', 'title': 'TRIP TO DELHI', 'physical_index': 1}, {'structure': '1.8', 'title': 'ROADSIDE FEAST', 'physical_index': 1}, {'structure': '1.9', 'title': 'STREET FEAST', 'physical_index': 1}, {'structure': '1.10', 'title': 'CANTEEN THALI TRAY', 'physical_index': 1}, {'structure': '1.11', 'title': 'DELHI CHAI', 'physical_index': 1}, {'structure': '1.12', 'title': 'NAANWICH', 'physical_index': 1}, {'structure': '1.13', 'title': 'ROADSIDE CHICKEN BHUNA', 'physical_index': 1}, {'structure': '1.14', 'title': '1947 BLACK DAL', 'physical_index': 1}, {'structure': '1.15', 'title': 'CHETTINAD VEG KARI', 'physical_index': 1}, {'structure': '1.16', 'title': 'DELHI STREET WRAP', 'physical_index': 1}, {'structure': '2', 'title': 'GLASS 6 | BOTTLE 29', 'physical_index': 2}, {'structure': '2.1', 'title': 'KOPPABERG MIXED FRUIT ALCOHOL FREE CIDER', 'physical_index': 2}, {'structure': '2.2', 'title': 'PERONI GLUTEN FREE LAGER', 'physical_index': 2}, {'structure': '2.3', 'title': 'SCHWEPPES 200ml Premium | Slimline | Lemonade | Ginger Ale', 'physical_index': 2}, {'structure': '2.4', 'title': 'COCA-COLA 200ml Classic | Zero', 'physical_index': 2}, {'structure': '2.5', 'title': 'Creamy house-made yoghurt drink bursting with rich, sweet mango flavour', 'physical_index': 2}, {'structure': '2.6', 'title': 'A sweet spiced milk chai freshly brewed in-house', 'physical_index': 2}, {'structure': '2.7', 'title': 'THE AMBER SOLSTICE', 'physical_index': 2}, {'structure': '2.8', 'title': 'SANTA\u2019S POTION', 'physical_index': 2}]"
+  },
+  {
+    "mode": "process_toc_with_page_numbers",
+    "accuracy": 1.0,
+    "incorrect_results": []
+  },
+  {
+    "message": "Checking title appearance in start concurrently"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'PAPADAM BASKET WITH DIPS' appears later in the page_text, and there is content before it, such as '10ASLAM TANDOORI CHOPS' and other descriptions. Therefore, this section does not start at the beginning of the page_text.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'TANDOORI SOYA CHOPS' does not appear at the very beginning of the page_text because other contents, specifically '10ASLAM T ANDOORI CHOPS', precede it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'NAANWICH' does not start at the very beginning of the page_text as there are other contents such as '10ASLAM TANDOORI CHOPS', 'TANDOORI SOYA CHOPS', and more appearing before it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'CANTEEN THALI TRAY' does not appear at the beginning of the page_text. There is other content before it, such as '10ASLAM TANDOORI CHOPS' and other sections.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'CHATORI CHICKPEA BOWL' does not start the page_text as there are other sections like '10ASLAM TANDOORI CHOPS', 'TANDOORI SOYA CHOPS', and others that come before it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'A sweet spiced milk chai freshly brewed in-house' appears but is not the first content in the given page_text as there are other sections such as 'GLASS 6 | BOTTLE 29' and others before it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'TRIP TO DELHI' does not appear at the beginning of the given page_text. There are other contents, starting from '10ASLAM TANDOORI CHOPS', before this section title.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title '1947 BLACK DAL' appears in the page_text, but there are other contents such as '10ASLAM TANDOORI CHOPS', 'TANDOORI SOYA CHOPS', and many more before it. Thus, the section does not start at the beginning of the page.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'STREET FEAST' does not appear at the very beginning of the page_text, as there are other contents such as '10ASLAM T ANDOORI CHOPS', 'TANDOORI SOYA CHOPS', and others before it. This indicates that the section does not start at the beginning.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section 'SCHWEPPES 200ml Premium | Slimline | Lemonade | Ginger Ale' appears later in the page_text, not at the beginning. The page_text starts with 'GLASS 6 | BOTTLE 29'.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'SANTA\u2019S POTION' appears after other content in the page_text, such as 'GLASS 6 | BOTTLE 29' and 'THE AMBER SOLSTICE'. This indicates that the section does not start at the very beginning of the page_text.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'ROADSIDE CHICKEN BHUNA' appears in the given page_text; however, there are multiple other contents before the section title, indicating that the section does not start at the beginning of the page_text.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'COCA-COLA 200ml Classic | Zero' is preceded by other content such as 'GLASS 6 | BOTTLE 29' and other sections in the page_text. Therefore, the section does not start at the beginning of the page_text.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'GLASS 6 | BOTTLE 29' matches the very first content in the page_text, confirming that the section starts at the beginning.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'DELHI CHAI' does not appear at the very beginning of the page_text, as there are multiple other sections and content before it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'GOL GAPPA' does not appear at the beginning of the page_text. Other sections such as '10ASLAM TANDOORI CHOPS', 'TANDOORI SOYA CHOPS', and 'PAPADAM BASKET WITH DIPS' are listed earlier in the text.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'SWEET POTATO FRIES' does not start at the beginning of the page_text. There are other contents, such as '10ASLAM T ANDOORI CHOPS', 'TANDOORI SOYA CHOPS', and others, that appear before it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'KOPPABERG MIXED FRUIT ALCOHOL FREE CIDER' does not appear at the beginning of the page_text. There is content ('GLASS 6 | BOTTLE 29') before the current section title.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'DELHI STREET WRAP' appears later in the page_text after previous sections, indicating that the current section does not start at the beginning of the page_text.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The title 'Creamy house-made yoghurt drink bursting with rich, sweet mango flavour' does not appear at the beginning of the given page_text; other content such as 'GLASS 6 | BOTTLE 29' and subsequent content precedes it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'TANDOORI HOUSE SALAD' does not appear at the start of the page_text. There are other contents appearing before it, including '10ASLAM T ANDOORI CHOPS' and other sections.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'PERONI GLUTEN FREE LAGER' does not appear at the beginning of the page_text. Other content like 'GLASS 6 | BOTTLE 29' and 'KOPPABERG MIXED FRUIT ALCOHOL FREE CIDER' precedes it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'CHETTINAD VEG KARI' does not appear at the beginning of the page_text. Other content precedes it in the text, such as '10ASLAM TANDOORI CHOPS' and additional sections.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title '10ASLAM TANDOORI CHOPS' matches the very beginning of the page_text, indicating that it is the first content in the text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'THE AMBER SOLSTICE' is not the first content in the given page_text. Other contents like 'GLASS 6 | BOTTLE 29' and subsequent text appear before it.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The section title 'ROADSIDE FEAST' appears later in the page_text and not at the beginning. Other content comes before it, such as '10ASLAM TANDOORI CHOPS' and subsequent sections.\", 'start_begin': 'no'}"
+  }
+]
