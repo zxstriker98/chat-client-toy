@@ -266,8 +266,34 @@ You can reach My Delhi at **+44 191 230 2302**.
 ---
 
 ### Q23: How much are the cocktails?
-- Signature cocktails: **£9–£11**
-- Classic cocktails: **£9**
+
+#### Signature Cocktails
+| Cocktail | Price |
+|---------|-------|
+| Karnataka Highball | £10 |
+| The Emperor's Rose | £10 |
+| Bollywood Twilight | £9 |
+| Goan Zombie | £10 |
+| Duke of Connaught | £10 |
+| The Amber Solstice | £11 |
+
+#### Classic Cocktails
+| Cocktail | Price |
+|---------|-------|
+| Rangpur Bramble | £9 |
+| Margarita | £9 |
+| New Delhi Iced Tea | £9 |
+| Daiquiri | £9 |
+
+#### Mocktails
+| Mocktail | Price |
+|---------|-------|
+| Dear Delhi | £6.50 |
+| Santa's Potion | £9 |
+| Pink Meenakshi | £6.50 |
+| Dillwali Lemonade | £9 |
+
+> ⚠️ *Note: Original answer was incomplete — missed mocktails and individual cocktail prices. Full data sourced directly from Vision-ingested menu chunk.*
 
 ---
 
