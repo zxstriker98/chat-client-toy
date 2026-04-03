@@ -23,17 +23,14 @@ async def main(args: Namespace) -> None:
     # ── Build system prompt dynamically ──────────────────────────────────────
     builder = PromptBuilder(mode=args.prompt_mode, max_chars=args.max_prompt_chars)
 
-    # Load identity from config file if provided
+    # Load identity from config file
     if args.identity:
         try:
             builder.add_identity(args.identity)
             print(f"  [Identity loaded from {args.identity}]")
         except Exception as e:
-            print(f"  [Identity load failed: {e} — using default]")
-            builder.sections["identity"] = args.system_prompt
-    else:
-        # Fall back to --system-prompt flag
-        builder.sections["identity"] = args.system_prompt
+            print(f"  [Identity load failed: {e}]")
+            return
 
     # Always inject current date/time
     builder.add_datetime()
@@ -155,9 +152,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", default="gpt-5.2")
 
     # ── PromptBuilder settings ────────────────────────────────────────────────
-    parser.add_argument("--system-prompt", default="you are a generic chat-bot with access to tools",
-                        help="Fallback system prompt if no --identity config is provided")
-    parser.add_argument("--identity", default=None,
+    parser.add_argument("--identity", required=True,
                         help="Path to identity config file (YAML or JSON) e.g. restaurants/my-delhi/config.json")
     parser.add_argument("--prompt-mode", default="full", choices=["full", "minimal", "none"],
                         help="Prompt assembly mode: full (all sections), minimal (identity+datetime+tools), none (empty)")
