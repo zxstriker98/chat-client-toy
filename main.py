@@ -42,6 +42,18 @@ async def main(args: Namespace) -> None:
 
     # ── Build the system prompt ───────────────────────────────────────────────
     from tools.tools import registry
+
+    # Filter tools if --tools is specified
+    if args.tools:
+        requested = set(args.tools)
+        available = set(registry.tool_spec.keys())
+        unknown = requested - available
+        if unknown:
+            print(f"  [Warning: unknown tools: {', '.join(unknown)}. Available: {', '.join(available)}]")
+        registry.tool_spec = {k: v for k, v in registry.tool_spec.items() if k in requested}
+        registry.tool_function = {k: v for k, v in registry.tool_function.items() if k in requested}
+        print(f"  [Tools enabled: {', '.join(registry.tool_spec.keys())}]")
+
     builder.add_tools(registry)
     system_prompt = builder.build()
 
@@ -156,6 +168,8 @@ if __name__ == "__main__":
                         help="Path to identity config file (YAML or JSON) e.g. restaurants/my-delhi/config.json")
     parser.add_argument("--prompt-mode", default="full", choices=["full", "minimal", "none"],
                         help="Prompt assembly mode: full (all sections), minimal (identity+datetime+tools), none (empty)")
+    parser.add_argument("--tools", nargs="*", default=None,
+                        help="Whitelist of tools to enable e.g. --tools get_place_details read_file (default: all tools)")
     parser.add_argument("--max-prompt-chars", type=int, default=32000,
                         help="Maximum characters in the assembled system prompt (default: 32000)")
     parser.add_argument("--bootstrap", default=None,
