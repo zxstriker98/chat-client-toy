@@ -1,19 +1,17 @@
 """
-Challenge 6: Full PromptBuilder — The Final Boss! 🎯
+PromptBuilder — Dynamic system prompt assembly.
 
-Your task: Combine ALL previous challenges into one complete PromptBuilder class.
+Builds a system prompt from multiple sections:
+  - identity   (from YAML/JSON config)
+  - datetime   (current date/time)
+  - tools      (from ToolRegistry)
+  - memory     (RAG search results)
+  - bootstrap  (AGENTS.md workspace rules)
 
-What it uses:
-- Challenge 1 → SectionBuilder logic (assemble sections with headers)
-- Challenge 2 → ConfigParser logic (load identity from YAML/JSON)
-- Challenge 3 → ToolFormatter logic (format tool specs)
-- Challenge 4 → SmartTruncator logic (context window management)
-- Challenge 5 → ModeController logic (filter sections by mode)
-
-Usage (what the final API looks like):
+Usage:
     builder = PromptBuilder(mode="full", max_chars=32000)
-    builder.add_identity("config.yaml")
-    builder.add_tools(tool_registry)
+    builder.add_identity("restaurants/my-delhi/config.json")
+    builder.add_tools(registry)
     builder.add_datetime()
     builder.add_memory(rag_results)
     builder.add_bootstrap(".")
@@ -251,127 +249,3 @@ class PromptBuilder:
         return remaining
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# HINTS
-# ─────────────────────────────────────────────────────────────────────────────
-
-"""
-HINT 1: __init__
------------------
-def __init__(self, mode="full", max_chars=32000):
-    self.mode = mode
-    self.max_chars = max_chars
-    self.sections = {}  # {name: content}
-
-
-HINT 2: add_identity (same as Challenge 2!)
---------------------------------------------
-path = Path(config_path)
-if not path.exists():
-    raise FileNotFoundError(f"Config not found: {config_path}")
-
-suffix = path.suffix
-if suffix not in [".yaml", ".yml", ".json"]:
-    raise ValueError(f"Unsupported format: {suffix}")
-
-with open(config_path, "r") as f:
-    config = yaml.safe_load(f) if suffix in [".yaml", ".yml"] else json.load(f)
-
-name = config.get("name", "Assistant")
-role = config.get("role", "helpful assistant")
-caps = config.get("capabilities", [])
-style = config.get("style", "Professional")
-
-caps_text = "\n".join([f"- {c}" for c in caps])
-content = f"You are {name}, a {role}.\n\nYour capabilities include:\n{caps_text}\n\nCommunication style: {style}"
-
-self.sections["identity"] = content
-return self
-
-
-HINT 3: add_tools (same as Challenge 3!)
-------------------------------------------
-tool_spec = tool_registry.tool_spec
-result = ""
-for tool_name, tool_info in tool_spec.items():
-    description = tool_info.get("description", "No description")
-    result += f"**{tool_name}**: {description}\n"
-    
-    parameters = tool_info.get("parameters", {})
-    properties = parameters.get("properties", {})
-    required = parameters.get("required", [])
-    
-    if properties:
-        result += "  Parameters:\n"
-        for param_name, param_info in properties.items():
-            param_type = param_info.get("type", "any")
-            param_desc = param_info.get("description", "")
-            if param_name in required:
-                result += f"  - {param_name} ({param_type}, required): {param_desc}\n"
-            else:
-                result += f"  - {param_name} ({param_type}): {param_desc}\n"
-    result += "\n"
-
-self.sections["tools"] = result
-return self
-
-
-HINT 4: add_datetime
-----------------------
-now = datetime.now()
-formatted = now.strftime("%A, %Y-%m-%d %H:%M:%S")
-self.sections["datetime"] = f"Current date and time: {formatted}"
-return self
-
-
-HINT 5: add_memory
--------------------
-if not rag_results:
-    return self
-
-parts = []
-for r in rag_results:
-    file_path = r.get("file_path", "unknown")
-    page_num = r.get("page_num", "?")
-    score = r.get("score", 0)
-    text = r.get("chunk_text", "")
-    parts.append(f"From: {file_path} (page {page_num}) [score: {score:.2f}]\n{text}")
-
-self.sections["memory"] = "\n\n".join(parts)
-return self
-
-
-HINT 6: add_bootstrap
-----------------------
-content_parts = []
-for filename in ["AGENTS.md", "AGENTS.local.md"]:
-    filepath = Path(workspace_dir) / filename
-    if filepath.exists():
-        content_parts.append(filepath.read_text())
-
-if content_parts:
-    self.sections["bootstrap"] = "\n\n".join(content_parts)
-return self
-
-
-HINT 7: build
---------------
-def build(self) -> str:
-    allowed = MODE_SECTIONS.get(self.mode, set())
-    filtered = {k: v for k, v in self.sections.items() if k in allowed}
-    
-    if not filtered:
-        return ""
-    
-    section_list = [
-        Section(name=k, content=v, priority=PRIORITY.get(k, 99))
-        for k, v in filtered.items()
-    ]
-    section_list = sorted(section_list, key=lambda s: s.priority)
-    
-    total = sum(len(s.content) + len(s.name) + 10 for s in section_list)
-    if total > self.max_chars:
-        section_list = self._truncate(section_list)
-    
-    return "".join([f"## {s.name.upper()}\n{s.content}\n\n" for s in section_list])
-"""
