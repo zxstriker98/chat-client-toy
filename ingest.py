@@ -13,6 +13,7 @@ import json
 import hashlib
 from pathlib import Path
 
+import pymupdf
 from dotenv import load_dotenv
 
 from database.connection import create_db
@@ -107,6 +108,18 @@ def flatten_tree(nodes: list, ancestors: list = None, file_hash_val: str = "") -
     return chunks
 
 
+VISION_EXTRACTION_PROMPT = """Describe EVERYTHING you see on this page in complete detail. Include:
+- All dish names exactly as written
+- All prices (numbers near dish names are prices in £)
+- All dietary markers: (v)=vegetarian, (vg)=vegan, (gf)=gluten free
+- All descriptions word for word
+- Any allergen symbols or tables
+- Any section headings
+
+Format each dish as: "DISH NAME (dietary) — £price: description"
+Be exhaustive and precise. Do not summarise or omit anything."""
+
+
 MENU_SUMMARY_PROMPT = """You are given raw text extracted from a restaurant menu PDF. Your task is to produce a structured summary that preserves ALL factual details.
 
 CRITICAL RULES:
@@ -122,6 +135,89 @@ Raw Menu Text: {text}
 
 Return a structured factual summary with all dish names, prices and descriptions. Do not include any other text.
 """
+
+
+def ingest_pdf_vision(
+    pdf_path: str,
+    file_repo: FileRepository,
+    chunk_repo: ChunkRepository,
+    reingest: bool = False,
+    prompt: str = None,
+) -> int:
+    """
+    Ingest a PDF using GPT-4o Vision API — renders each page as image and extracts
+    structured text. Best for menus/PDFs where text is image-based (prices in graphics,
+    allergen tables, etc).
+
+    Returns:
+        Number of chunks created.
+    """
+    from services.PDFVisionExtractor import PDFVisionExtractor
+
+    path = Path(pdf_path)
+    if not path.exists():
+        print(f"  File not found: {pdf_path}")
+        return 0
+
+    fhash = file_hash(pdf_path)
+    existing = file_repo.get_by_hash(fhash)
+
+    if existing and not reingest:
+        existing_chunks = chunk_repo.count(file_hash=fhash)
+        print(f"  Already ingested: {path.name} ({existing_chunks} chunks)")
+        return 0
+
+    if existing and reingest:
+        deleted = chunk_repo.delete_by_file(fhash)
+        print(f"  Cleared {deleted} old chunks")
+
+    print(f"[{path.name}] — Vision mode")
+
+    extractor = PDFVisionExtractor()
+    doc = pymupdf.open(pdf_path)
+    num_pages = len(doc)
+    extraction_prompt = prompt or VISION_EXTRACTION_PROMPT
+
+    chunks = []
+    for page_num in range(num_pages):
+        print(f"  Extracting page {page_num + 1}/{num_pages}...")
+        try:
+            text = extractor.extract_page(pdf_path, page_num, prompt=extraction_prompt)
+        except Exception as e:
+            print(f"  Vision extraction failed for page {page_num + 1}: {e}")
+            continue
+
+        chunk = ChunkRecord(
+            file_hash=fhash,
+            node_id=f"vision_page_{page_num + 1}",
+            node_path=f"{path.stem} > Page {page_num + 1}",
+            node_title=f"Page {page_num + 1}",
+            page_index=page_num + 1,
+            node_summary=text,
+            text=text,
+            chunk_index=page_num,
+        )
+        chunks.append(chunk)
+
+    if not chunks:
+        print("  No chunks generated")
+        return 0
+
+    # Save file record
+    file_record = FileRecord(
+        file_hash=fhash,
+        file_name=path.name,
+        doc_id=f"vision_{fhash[:8]}",
+        file_format="pdf_vision",
+        file_size=path.stat().st_size,
+    )
+    file_repo.insert(file_record)
+
+    for chunk in chunks:
+        chunk_repo.insert(chunk)
+
+    print(f"  Vision-ingested {len(chunks)} page chunks")
+    return len(chunks)
 
 
 def ingest_pdf(
@@ -219,6 +315,7 @@ def main():
     parser.add_argument("--clear", action="store_true", help="Clear database")
     parser.add_argument("--list", action="store_true", help="List ingested documents")
     parser.add_argument("--menu", action="store_true", help="Use menu-optimised prompt that preserves prices and dish names")
+    parser.add_argument("--vision", action="store_true", help="Use GPT-4o Vision API to extract text from image-based PDFs (allergen tables, graphic menus)")
     
     args = parser.parse_args()
     
@@ -264,23 +361,33 @@ def main():
         
         total = 0
         for pdf in args.files:
-            # Auto-detect menu PDFs by flag or filename keywords
-            is_menu = args.menu or any(
-                kw in Path(pdf).name.lower()
-                for kw in ["menu", "food", "drink", "price"]
-            )
-            summary_prompt = MENU_SUMMARY_PROMPT if is_menu else None
-            if is_menu:
-                print(f"  Using menu-optimised prompt for: {Path(pdf).name}")
+            if args.vision:
+                # Vision mode: render pages as images, extract with GPT-4o Vision
+                print(f"  Using Vision API for: {Path(pdf).name}")
+                count = ingest_pdf_vision(
+                    pdf,
+                    file_repo,
+                    chunk_repo,
+                    reingest=args.reingest,
+                )
+            else:
+                # Auto-detect menu PDFs by flag or filename keywords
+                is_menu = args.menu or any(
+                    kw in Path(pdf).name.lower()
+                    for kw in ["menu", "food", "drink", "price"]
+                )
+                summary_prompt = MENU_SUMMARY_PROMPT if is_menu else None
+                if is_menu:
+                    print(f"  Using menu-optimised prompt for: {Path(pdf).name}")
 
-            count = ingest_pdf(
-                pdf,
-                file_repo,
-                chunk_repo,
-                service,
-                reingest=args.reingest,
-                summary_prompt=summary_prompt,
-            )
+                count = ingest_pdf(
+                    pdf,
+                    file_repo,
+                    chunk_repo,
+                    service,
+                    reingest=args.reingest,
+                    summary_prompt=summary_prompt,
+                )
             total += count
         
         print(f"\nDone - {total} total chunks ingested from {len(args.files)} file(s)")
