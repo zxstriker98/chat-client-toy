@@ -455,17 +455,64 @@ def add_preface_if_needed(data):
 
 
 
+def get_spatial_page_text(pdf_path):
+    """
+    Extract text from PDF using PyMuPDF with spatial block awareness.
+    Groups text blocks by row (Y position) so prices appear next to dish names.
+    Returns list of (page_text, token_count) tuples.
+    """
+    enc = tiktoken.encoding_for_model("gpt-4o-2024-11-20")
+    
+    if isinstance(pdf_path, BytesIO):
+        doc = pymupdf.open(stream=pdf_path, filetype="pdf")
+    else:
+        doc = pymupdf.open(pdf_path)
+    
+    page_list = []
+    for page in doc:
+        blocks = page.get_text("blocks")
+        
+        # Sort blocks by Y position (top to bottom), then X (left to right)
+        blocks_sorted = sorted(
+            [(b[0], b[1], b[2], b[3], b[4].strip()) for b in blocks if b[4].strip()],
+            key=lambda b: (round(b[1] / 15) * 15, b[0])  # Group rows within 15px
+        )
+        
+        # Group blocks that are on the same row (within 15px Y)
+        rows = []
+        current_row = []
+        current_y = None
+        
+        for x0, y0, x1, y1, text in blocks_sorted:
+            if current_y is None or abs(y0 - current_y) > 15:
+                if current_row:
+                    rows.append(current_row)
+                current_row = [(x0, text)]
+                current_y = y0
+            else:
+                current_row.append((x0, text))
+        if current_row:
+            rows.append(current_row)
+        
+        # Build page text with same-row blocks joined
+        page_lines = []
+        for row in rows:
+            row_sorted = sorted(row, key=lambda b: b[0])  # left to right
+            line = "  |  ".join(text for _, text in row_sorted)
+            page_lines.append(line)
+        
+        page_text = "\n".join(page_lines)
+        token_length = len(enc.encode(page_text))
+        page_list.append((page_text, token_length))
+    
+    return page_list
+
+
 def get_page_tokens(pdf_path, model="gpt-4o-2024-11-20", pdf_parser="PyPDF2"):
     enc = tiktoken.encoding_for_model(model)
     if pdf_parser == "PyPDF2":
-        pdf_reader = PyPDF2.PdfReader(pdf_path)
-        page_list = []
-        for page_num in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[page_num]
-            page_text = page.extract_text()
-            token_length = len(enc.encode(page_text))
-            page_list.append((page_text, token_length))
-        return page_list
+        # Use spatial extraction for better price/dish name association
+        return get_spatial_page_text(pdf_path)
     elif pdf_parser == "PyMuPDF":
         if isinstance(pdf_path, BytesIO):
             pdf_stream = pdf_path
