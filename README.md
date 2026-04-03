@@ -95,31 +95,72 @@ python ingest.py --clear
 ### 2. Chat with Documents
 
 ```bash
-# Basic chat with RAG
-python main.py --chunks
+# Basic chat (requires --identity)
+uv run main.py --identity restaurants/my-delhi/config.json
+
+# With RAG context from ingested documents
+uv run main.py --identity restaurants/my-delhi/config.json --chunks
 
 # Specify chat and reranker models
-python main.py --chunks \
+uv run main.py --identity restaurants/my-delhi/config.json \
+  --chunks \
   --model claude-opus-4-20250514 \
   --ranker-model gpt-5.1
 
 # Without streaming
-python main.py --chunks --no-stream
+uv run main.py --identity restaurants/my-delhi/config.json --no-stream
 
-# Chat without RAG context
-python main.py --model gpt-4o
+# Show system prompt on startup
+uv run main.py --identity restaurants/my-delhi/config.json --verbose
 ```
 
-### 3. Run as HTTP Server
+### 3. Tool Selection
+
+Control which tools the LLM has access to:
+
+```bash
+# All tools (default — no --tools flag)
+uv run main.py --identity restaurants/my-delhi/config.json
+
+# Restaurant mode — only Google Places tools (safe for public deployment!)
+uv run main.py --identity restaurants/my-delhi/config.json \
+  --tools get_place_details get_place_photos
+
+# Single tool only
+uv run main.py --identity restaurants/my-delhi/config.json \
+  --tools get_place_details
+
+# No tools (pure chat, no tool calls)
+uv run main.py --identity restaurants/my-delhi/config.json \
+  --tools
+```
+
+### 4. Prompt Modes
+
+Control how much context is included in the system prompt:
+
+```bash
+# Full mode (default) — all sections: identity + datetime + tools + memory + bootstrap
+uv run main.py --identity restaurants/my-delhi/config.json --prompt-mode full
+
+# Minimal mode — identity + datetime + tools only (faster, cheaper)
+uv run main.py --identity restaurants/my-delhi/config.json --prompt-mode minimal
+
+# None mode — empty system prompt
+uv run main.py --identity restaurants/my-delhi/config.json --prompt-mode none
+
+# Custom max chars (default: 32000)
+uv run main.py --identity restaurants/my-delhi/config.json --max-prompt-chars 8000
+
+# Load AGENTS.md workspace rules
+uv run main.py --identity restaurants/my-delhi/config.json --bootstrap .
+```
+
+### 5. Run as HTTP Server
 
 ```bash
 # Start OpenAI-compatible API server
 python server.py --port 8100 --model llama3.1:8b
-
-# With restaurant context
-python server.py --port 8100 \
-  --model llama3.1:8b \
-  --restaurant delhi-darbar
 ```
 
 ## Architecture
@@ -210,11 +251,28 @@ The LLM can call tools during a conversation. Tools are auto-discovered from the
 
 ### Built-in Tools
 
-| Tool | Description |
-|------|-------------|
-| `read_file` | Read contents of any file in the workspace |
-| `run_bash` | Execute bash commands and return output |
-| `get_place_details` | Fetch live restaurant info from Google Places API (address, hours, rating, reviews) |
+| Tool | Description | Requires |
+|------|-------------|---------|
+| `read_file` | Read contents of any file in the workspace | — |
+| `run_bash` | Execute bash commands and return output | — |
+| `get_place_details` | Live restaurant info: address, hours, rating, reviews | `GOOGLE_PLACES_API_KEY` |
+| `get_place_photos` | Live photo URLs from Google Places (up to 10) | `GOOGLE_PLACES_API_KEY` |
+
+### Tool Selection via CLI
+
+Use `--tools` to whitelist specific tools:
+
+```bash
+# All tools (default)
+uv run main.py --identity restaurants/my-delhi/config.json
+
+# Restaurant-safe mode (no bash/file access for public bots)
+uv run main.py --identity restaurants/my-delhi/config.json \
+  --tools get_place_details get_place_photos
+
+# No tools (pure chat)
+uv run main.py --identity restaurants/my-delhi/config.json --tools
+```
 
 ### Adding a New Tool
 
@@ -234,14 +292,16 @@ def my_tool(query: str) -> str:
 
 That's it! The tool is automatically discovered and registered on startup.
 
-### Google Places Tool
-
-The `get_place_details` tool fetches live data for the configured restaurant:
+### Google Places Tools
 
 ```
 User: "Are you open right now?"
 AI:   [calls get_place_details()]
       → Returns: hours, open/closed status, address, rating, reviews
+
+User: "Show me photos of the restaurant"
+AI:   [calls get_place_photos(max_photos=5)]
+      → Returns: 5 photo URLs with dimensions and photographer credit
 ```
 
 **Setup:**
@@ -332,10 +392,15 @@ The system excels at sophisticated analysis across multiple documents:
 │   ├── tools.py               # ToolRegistry + @tool decorator + autodiscovery
 │   ├── readFile.py            # Read file contents tool
 │   ├── runBash.py             # Execute bash commands tool
-│   └── google_place_details.py # Google Places API — live restaurant details & reviews
+│   ├── google_place_details.py # Live restaurant details, hours, reviews, rating
+│   └── google_place_photos.py  # Live restaurant photo URLs from Google Places
+├── services/              # Core services
+│   ├── PageIndexService.py    # Document processing
+│   ├── ChunkContext.py        # RAG engine (search, rank, enrich)
+│   └── PromptBuilder.py       # Dynamic system prompt assembly
 ├── restaurants/           # Restaurant configurations
 │   └── my-delhi/
-│       └── config.json        # Restaurant identity + Google Place ID
+│       └── config.json        # name, role, capabilities, style, place_id
 └── data/                  # Document storage
 
 ```
