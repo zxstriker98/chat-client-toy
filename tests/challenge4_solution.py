@@ -30,50 +30,47 @@ class SmartTruncator:
     """
     
     def __init__(self, max_chars: int):
-        """
-        Initialize the truncator.
-        
-        Args:
-            max_chars: Maximum characters allowed in final prompt
-        """
-        # TODO: Store max_chars
-        pass
+        self.max_chars = max_chars
     
     def truncate(self, sections: List[Section]) -> str:
-        """
-        Truncate sections to fit within max_chars.
-        
-        Strategy:
-        1. Calculate total length
-        2. If under limit, return all sections
-        3. If over limit:
-           a. Sort by priority
-           b. Remove lowest priority sections first
-           c. If still over, truncate remaining sections
-        
-        Args:
-            sections: List of Section objects
-            
-        Returns:
-            Combined text that fits within max_chars
-        """
-        # TODO: Implement truncation logic
-        pass
+        # 1. Handle empty input
+        if not sections:
+            return ""
+
+        # 2. Already fits? Return everything
+        if self._calculate_total_length(sections) <= self.max_chars:
+            return self._format_sections(sections)
+
+        # 3. Sort by priority (1 = highest = keep first)
+        sorted_sections = sorted(sections, key=lambda s: s.priority)
+
+        # 4. Greedily add sections while they fit
+        remaining = []
+        for section in sorted_sections:
+            test = remaining + [section]
+            if self._calculate_total_length(test) <= self.max_chars:
+                remaining.append(section)
+
+        # 5. Format final result
+        result = self._format_sections(remaining)
+
+        # 6. Safety net: if still too long, hard truncate
+        if len(result) > self.max_chars:
+            return result[:self.max_chars] + "\n...[truncated]"
+
+        return result
     
     def _calculate_total_length(self, sections: List[Section]) -> int:
-        """Helper: Calculate total character count of sections."""
-        # TODO: Sum up all section content lengths
-        pass
+        return sum(len(s.content) + len(s.name) + 10 for s in sections)
     
     def _format_sections(self, sections: List[Section]) -> str:
-        """Helper: Combine sections into one string."""
-        # TODO: Join all sections with newlines
-        pass
+        return "".join([f"## {s.name.upper()}\n{s.content}\n\n" for s in sections])
     
     def _truncate_section(self, content: str, max_len: int) -> str:
-        """Helper: Truncate a single section to max_len characters."""
-        # TODO: Truncate content and add "...[truncated]" marker
-        pass
+        if len(content) <= max_len:
+            return content
+        marker = "\n...[truncated]"
+        return content[:max_len - len(marker)] + marker
 
 
 # ============================================
