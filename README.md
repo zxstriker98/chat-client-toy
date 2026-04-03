@@ -72,6 +72,36 @@ GOOGLE_PLACES_API_KEY=your_google_places_key
 
 ### 1. Ingest Documents
 
+#### Standard Ingestion
+```bash
+uv run ingest.py data/document.pdf
+```
+
+#### Menu / Price-Sensitive Documents
+Use `--menu` flag for restaurant menus or any document with prices, item names and structured data. This uses a **menu-optimised prompt** that instructs the LLM to preserve prices, dish names, and allergen info exactly.
+
+```bash
+# Explicit menu flag
+uv run ingest.py data/menu.pdf --menu --reingest
+
+# Auto-detected by filename (keywords: menu, food, drink, price)
+uv run ingest.py "data/NOVEMBER NEWCASTLE MENU WEB VIEW.pdf" --reingest
+```
+
+**Without `--menu`** (generic documents):
+```
+"The section covers Indian street food starters..."  ← summarised, prices lost
+```
+
+**With `--menu`** (price-preserving):
+```
+GOL GAPPA — £5.00: Crispy puri shells filled with spiced potato and chickpeas...
+SWEET POTATO FRIES — £4.50: Tossed in smoky gunpowder spice...
+HONEY CHILLI CHICKEN — £8.00: Crispy chicken in sweet and spicy honey chilli glaze...
+```
+
+#### All Ingestion Options
+
 ```bash
 # Ingest a single PDF
 python ingest.py "data/your_document.pdf"
@@ -192,6 +222,33 @@ python server.py --port 8100 --model llama3.1:8b
 ```
 
 ### Document Ingestion Flow
+
+```
+PDF File
+  │
+  ▼
+get_spatial_page_text()          ← PyMuPDF blocks mode
+  Groups text by Y position       Prices appear on same line as dish names
+  "GOL GAPPA | Crispy puri... | 5"
+  │
+  ▼
+PageIndex tree_parser()          ← LLM-based structure extraction
+  Detects TOC / sections
+  │
+  ▼
+generate_node_summary()          ← Custom or default prompt
+  --menu flag → preserves prices, dish names, allergens
+  default     → generic description
+  │
+  ▼
+flatten_tree()                   ← Raw text preferred over summary
+  node["text"] → node["summary"] → node["title"]
+  │
+  ▼
+SQLite (ChunkRecord)             ← Stored with node_path, page_index, summary, text
+```
+
+### Document Ingestion Flow (Original)
 
 ```
 PDF Document
