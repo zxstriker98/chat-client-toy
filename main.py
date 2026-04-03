@@ -15,13 +15,50 @@ from providers.errors.ProviderError import (
     ConnectionError,
     ProviderApiError,
 )
+from services.PromptBuilder import PromptBuilder
 
 
 async def main(args: Namespace) -> None:
+
+    # ── Build system prompt dynamically ──────────────────────────────────────
+    builder = PromptBuilder(mode=args.prompt_mode, max_chars=args.max_prompt_chars)
+
+    # Load identity from config file if provided
+    if args.identity:
+        try:
+            builder.add_identity(args.identity)
+            print(f"  [Identity loaded from {args.identity}]")
+        except Exception as e:
+            print(f"  [Identity load failed: {e} — using default]")
+            builder.sections["identity"] = args.system_prompt
+    else:
+        # Fall back to --system-prompt flag
+        builder.sections["identity"] = args.system_prompt
+
+    # Always inject current date/time
+    builder.add_datetime()
+
+    # Load workspace bootstrap rules if requested
+    if args.bootstrap:
+        builder.add_bootstrap(args.bootstrap)
+        print(f"  [Bootstrap loaded from {args.bootstrap}]")
+
+    # ── Build the system prompt ───────────────────────────────────────────────
+    from tools.tools import registry
+    builder.add_tools(registry)
+    system_prompt = builder.build()
+
+    if args.verbose:
+        print(f"\n{'─'*60}")
+        print("SYSTEM PROMPT PREVIEW:")
+        print(system_prompt[:500] + ("..." if len(system_prompt) > 500 else ""))
+        print(f"{'─'*60}\n")
+
+    # ── Initialize LLM client ─────────────────────────────────────────────────
     try:
         client: AsyncBaseLLMClient = ProviderFactory.from_model(
             model_name=args.model,
-            instructions=args.system_prompt,
+            instructions=system_prompt,
         )
     except Exception as e:
         print(f"Failed to initialize provider for model '{args.model}': {e}")
@@ -66,12 +103,22 @@ async def main(args: Namespace) -> None:
         enriched_query = query
         if chunk_ctx:
             try:
-                # Get enriched query with full chunk context
+                # Get enriched query with full chunk context (RAG)
                 enriched_query = await chunk_ctx.enrich(query, top_k=8)
                 if enriched_query != query:
-                    # Context was added
                     num_chunks = enriched_query.count("---")
                     print(f"  [Context attached from {num_chunks} chunk(s)]")
+
+                    # Inject RAG results into PromptBuilder memory section
+                    # and rebuild prompt dynamically for this query
+                    if args.prompt_mode == "full":
+                        # Parse chunks from enriched query for memory injection
+                        builder.sections.pop("memory", None)
+                        rag_results = [{"file_path": "chunk_db", "chunk_text": enriched_query, "page_num": 0, "score": 1.0}]
+                        builder.add_memory(rag_results)
+                        updated_prompt = builder.build()
+                        client.instructions = updated_prompt
+
             except Exception as e:
                 print(f"  [Context routing failed: {e}]")
 
@@ -102,14 +149,32 @@ async def main(args: Namespace) -> None:
 if __name__ == "__main__":
     load_dotenv()
     parser: ArgumentParser = ArgumentParser()
+
+    # ── LLM settings ──────────────────────────────────────────────────────────
     parser.add_argument("--stream", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--model", default="gpt-5.2")
-    parser.add_argument("--system-prompt", default="you are a generic chat-bot with access to tools")
+
+    # ── PromptBuilder settings ────────────────────────────────────────────────
+    parser.add_argument("--system-prompt", default="you are a generic chat-bot with access to tools",
+                        help="Fallback system prompt if no --identity config is provided")
+    parser.add_argument("--identity", default=None,
+                        help="Path to identity config file (YAML or JSON) e.g. restaurants/my-delhi/config.json")
+    parser.add_argument("--prompt-mode", default="full", choices=["full", "minimal", "none"],
+                        help="Prompt assembly mode: full (all sections), minimal (identity+datetime+tools), none (empty)")
+    parser.add_argument("--max-prompt-chars", type=int, default=32000,
+                        help="Maximum characters in the assembled system prompt (default: 32000)")
+    parser.add_argument("--bootstrap", default=None,
+                        help="Directory to scan for AGENTS.md workspace rules (e.g. '.')")
+    parser.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False,
+                        help="Show system prompt preview on startup")
+
+    # ── RAG / Chunk settings ──────────────────────────────────────────────────
     parser.add_argument("--chunks", action=argparse.BooleanOptionalAction, default=False,
                         help="Enable chunk context (RAG) from the local chunk database")
     parser.add_argument("--chunk-db", default="data/pageindex_cache.db",
                         help="Path to the chunk SQLite database")
     parser.add_argument("--ranker-model", default="gpt-4.1-mini",
                         help="LLM model used to rank chunk relevance (default: gpt-4.1-mini)")
+
     args: Namespace = parser.parse_args()
     asyncio.run(main(args))
