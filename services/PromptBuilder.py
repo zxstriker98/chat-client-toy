@@ -164,17 +164,30 @@ class PromptBuilder:
         return self
 
     def add_memory(self, rag_results: List[Dict[str, Any]]) -> "PromptBuilder":
-        """Add RAG search results as memory section."""
+        """Add RAG search results as memory section.
+
+        Accepts results from ChunkContext.search() with fields:
+            node_path, node_title, node_summary, page_index, text, rank, file_hash
+        """
         if not rag_results:
             return self
         parts = []
         for r in rag_results:
-            file_path = r.get("file_path", "unknown")
-            page_num = r.get("page_num", "?")
-            score = r.get("score", 0)
-            text = r.get("chunk_text", "")
-            parts.append(f"From: {file_path} (page {page_num}) [score: {score:.2f}]\n{text}")
-        self.sections["memory"] = "\n\n".join(parts)
+            # Support ChunkContext.search() result fields
+            path = r.get("node_path") or r.get("node_title") or r.get("file_path", "unknown")
+            page = r.get("page_index") or r.get("page_num", "?")
+            rank = r.get("rank", "?")
+            summary = r.get("node_summary", "")
+            text = r.get("text") or r.get("chunk_text", "")
+
+            header = f"[{path}] (page {page}, rank #{rank})"
+            entry = header
+            if summary:
+                entry += f"\nSummary: {summary}"
+            entry += f"\n{text}"
+            parts.append(entry)
+
+        self.sections["memory"] = "\n\n---\n\n".join(parts)
         return self
 
     def add_bootstrap(self, workspace_dir: str) -> "PromptBuilder":

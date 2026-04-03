@@ -111,21 +111,23 @@ async def main(args: Namespace) -> None:
         enriched_query = query
         if chunk_ctx:
             try:
-                # Get enriched query with full chunk context (RAG)
-                enriched_query = await chunk_ctx.enrich(query, top_k=8)
-                if enriched_query != query:
-                    num_chunks = enriched_query.count("---")
-                    print(f"  [Context attached from {num_chunks} chunk(s)]")
+                # Search for relevant chunks
+                rag_results = await chunk_ctx.search(query, top_k=8)
 
-                    # Inject RAG results into PromptBuilder memory section
-                    # and rebuild prompt dynamically for this query
-                    if args.prompt_mode == "full":
-                        # Parse chunks from enriched query for memory injection
-                        builder.sections.pop("memory", None)
-                        rag_results = [{"file_path": "chunk_db", "chunk_text": enriched_query, "page_num": 0, "score": 1.0}]
-                        builder.add_memory(rag_results)
-                        updated_prompt = builder.build()
-                        client.instructions = updated_prompt
+                if rag_results:
+                    print(f"  [Context attached from {len(rag_results)} chunk(s)]")
+
+                    # Inject structured RAG results into PromptBuilder memory section
+                    # and rebuild system prompt dynamically for this query
+                    builder.sections.pop("memory", None)
+                    builder.add_memory(rag_results)
+                    updated_prompt = builder.build()
+                    client.instructions = updated_prompt
+
+                    # Also enrich the user query with context (for user message)
+                    context = chunk_ctx.format_context(rag_results)
+                    if context:
+                        enriched_query = f"{context}\n\n{query}"
 
             except Exception as e:
                 print(f"  [Context routing failed: {e}]")
