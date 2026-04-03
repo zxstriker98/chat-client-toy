@@ -356,3 +356,81 @@ The **Karnataka Highball** at My Delhi is a nostalgic cocktail inspired by old I
 ---
 
 *Powered by: GPT-4o + Google Places API + PageIndex RAG + Vision PDF Extraction*
+
+---
+
+## ⚙️ Model & Configuration Details
+
+### LLM Model
+| Parameter | Value |
+|-----------|-------|
+| **Model** | `gpt-4o` |
+| **Provider** | OpenAI |
+| **Context window** | 128,000 tokens |
+| **Max prompt chars** | 32,000 |
+| **Prompt mode** | `full` |
+
+### CLI Arguments Used
+```bash
+uv run main.py \
+  --model gpt-4o \
+  --identity restaurants/my-delhi/config.json \
+  --tools get_place_details get_place_photos \
+  --chunks \
+  --chunk-db data/pageindex_cache.db
+```
+
+### Tools Enabled
+| Tool | Purpose |
+|------|---------|
+| `get_place_details` | Live hours, rating, reviews, address, phone from Google Places API |
+| `get_place_photos` | Live photo URLs from Google Places API |
+
+### Tools Available (not used in this session)
+| Tool | Purpose |
+|------|---------|
+| `read_file` | Read files from disk |
+| `run_bash` | Execute bash commands |
+
+### RAG Configuration
+| Parameter | Value |
+|-----------|-------|
+| **Database** | `data/pageindex_cache.db` (SQLite) |
+| **Chunks loaded** | 23 chunks |
+| **Ranker model** | `gpt-4o-mini` |
+| **Top-k per query** | 5 chunks |
+| **Ingestion mode** | `--vision` (GPT-4o Vision API) |
+
+### Identity Config (`restaurants/my-delhi/config.json`)
+```json
+{
+  "name": "My Delhi Newcastle",
+  "place_id": "ChIJLT68EIpxfkgRlQ1G1MxpX9M",
+  "role": "friendly restaurant assistant for My Delhi Newcastle",
+  "capabilities": [
+    "Answer questions about the menu and cuisine",
+    "Provide live opening hours, ratings and reviews",
+    "Help customers with reservations and contact information",
+    "Recommend dishes based on dietary preferences",
+    "Share information about ingredients and allergens"
+  ],
+  "style": "Warm, welcoming and knowledgeable about Indian street food"
+}
+```
+
+### PDF Ingestion Pipeline
+```
+Menu PDF → PyMuPDF (render as PNG at 2x zoom)
+         → GPT-4o Vision API
+         → Structured text with prices + dietary markers
+         → SQLite ChunkRecord
+         → RAG search at query time
+```
+
+### System Prompt Sections (full mode)
+| Section | Content |
+|---------|---------|
+| `IDENTITY` | Restaurant role, capabilities, communication style |
+| `DATETIME` | Current date and time |
+| `TOOLS` | Available tool specs with parameters |
+| `MEMORY` | Top-5 RAG chunks relevant to current query |
