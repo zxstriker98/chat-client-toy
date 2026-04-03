@@ -5,11 +5,30 @@ build/
 dist/
 wheels/
 *.egg-info
-*.log
 *.pid
 *.lock
+
 # Virtual environments
 .venv
 
 # Environment variables
 .env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Data files (large binaries, databases)
+data/*.db
+data/*.pdf
+
+# Test PDFs
+data/alpha_handbook.pdf
+data/beta_strategy.pdf
+data/gamma_research.pdf
+data/large_test_*.pdf
