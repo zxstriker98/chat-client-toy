@@ -143,6 +143,7 @@ def ingest_pdf_vision(
     chunk_repo: ChunkRepository,
     reingest: bool = False,
     prompt: str = None,
+    vision_model: str = "gpt-4o",
 ) -> int:
     """
     Ingest a PDF using GPT-4o Vision API — renders each page as image and extracts
@@ -173,7 +174,7 @@ def ingest_pdf_vision(
 
     print(f"[{path.name}] — Vision mode")
 
-    extractor = PDFVisionExtractor()
+    extractor = PDFVisionExtractor(model=vision_model)
     doc = pymupdf.open(pdf_path)
     num_pages = len(doc)
     extraction_prompt = prompt or VISION_EXTRACTION_PROMPT
@@ -316,6 +317,7 @@ def main():
     parser.add_argument("--list", action="store_true", help="List ingested documents")
     parser.add_argument("--menu", action="store_true", help="Use menu-optimised prompt that preserves prices and dish names (only applies with --no-vision)")
     parser.add_argument("--no-vision", action="store_true", help="Use PageIndex text extraction instead of GPT-4o Vision (faster but less accurate for graphic PDFs)")
+    parser.add_argument("--vision-model", type=str, default="gpt-4o", help="Vision model to use for PDF extraction (default: gpt-4o). Options: gpt-4o, gpt-4o-mini, gpt-4-turbo")
     
     args = parser.parse_args()
     
@@ -364,12 +366,13 @@ def main():
             if not args.no_vision:
                 # DEFAULT: Vision mode — render pages as images, extract with GPT-4o Vision
                 # Most accurate for graphic PDFs, menus, allergen tables
-                print(f"  Using Vision API (default) for: {Path(pdf).name}")
+                print(f"  Using Vision API [{args.vision_model}] for: {Path(pdf).name}")
                 count = ingest_pdf_vision(
                     pdf,
                     file_repo,
                     chunk_repo,
                     reingest=args.reingest,
+                    vision_model=args.vision_model,
                 )
             else:
                 # FALLBACK: PageIndex text extraction (--no-vision flag)

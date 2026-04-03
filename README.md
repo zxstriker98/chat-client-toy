@@ -120,6 +120,25 @@ uv run ingest.py data/menu.pdf --no-vision --menu
 | Cost | ~$0.01/page | ~$0.05/page |
 | Best for | Menus, brochures, forms | Books, reports, policies |
 
+#### Choosing a Vision Model
+
+```bash
+# Default: gpt-4o (best quality)
+uv run ingest.py data/menu.pdf
+
+# Faster + cheaper: gpt-4o-mini (good for simple text-heavy PDFs)
+uv run ingest.py data/menu.pdf --vision-model gpt-4o-mini
+
+# High quality alternative
+uv run ingest.py data/menu.pdf --vision-model gpt-4-turbo
+```
+
+| Model | Quality | Speed | Cost |
+|-------|---------|-------|------|
+| `gpt-4o` (default) | ⭐⭐⭐⭐⭐ | Medium | ~$0.01/page |
+| `gpt-4o-mini` | ⭐⭐⭐⭐ | Fast | ~$0.001/page |
+| `gpt-4-turbo` | ⭐⭐⭐⭐⭐ | Medium | ~$0.02/page |
+
 #### All Ingestion Options
 
 ```bash
