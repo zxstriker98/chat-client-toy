@@ -314,8 +314,8 @@ def main():
     parser.add_argument("--reingest", action="store_true", help="Re-ingest even if already processed")
     parser.add_argument("--clear", action="store_true", help="Clear database")
     parser.add_argument("--list", action="store_true", help="List ingested documents")
-    parser.add_argument("--menu", action="store_true", help="Use menu-optimised prompt that preserves prices and dish names")
-    parser.add_argument("--vision", action="store_true", help="Use GPT-4o Vision API to extract text from image-based PDFs (allergen tables, graphic menus)")
+    parser.add_argument("--menu", action="store_true", help="Use menu-optimised prompt that preserves prices and dish names (only applies with --no-vision)")
+    parser.add_argument("--no-vision", action="store_true", help="Use PageIndex text extraction instead of GPT-4o Vision (faster but less accurate for graphic PDFs)")
     
     args = parser.parse_args()
     
@@ -361,9 +361,10 @@ def main():
         
         total = 0
         for pdf in args.files:
-            if args.vision:
-                # Vision mode: render pages as images, extract with GPT-4o Vision
-                print(f"  Using Vision API for: {Path(pdf).name}")
+            if not args.no_vision:
+                # DEFAULT: Vision mode — render pages as images, extract with GPT-4o Vision
+                # Most accurate for graphic PDFs, menus, allergen tables
+                print(f"  Using Vision API (default) for: {Path(pdf).name}")
                 count = ingest_pdf_vision(
                     pdf,
                     file_repo,
@@ -371,14 +372,17 @@ def main():
                     reingest=args.reingest,
                 )
             else:
-                # Auto-detect menu PDFs by flag or filename keywords
+                # FALLBACK: PageIndex text extraction (--no-vision flag)
+                # Faster but less accurate for graphic/designed PDFs
                 is_menu = args.menu or any(
                     kw in Path(pdf).name.lower()
                     for kw in ["menu", "food", "drink", "price"]
                 )
                 summary_prompt = MENU_SUMMARY_PROMPT if is_menu else None
                 if is_menu:
-                    print(f"  Using menu-optimised prompt for: {Path(pdf).name}")
+                    print(f"  Using menu-optimised prompt (text mode) for: {Path(pdf).name}")
+                else:
+                    print(f"  Using PageIndex text extraction for: {Path(pdf).name}")
 
                 count = ingest_pdf(
                     pdf,

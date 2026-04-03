@@ -72,33 +72,53 @@ GOOGLE_PLACES_API_KEY=your_google_places_key
 
 ### 1. Ingest Documents
 
-#### Standard Ingestion
-```bash
-uv run ingest.py data/document.pdf
-```
-
-#### Menu / Price-Sensitive Documents
-Use `--menu` flag for restaurant menus or any document with prices, item names and structured data. This uses a **menu-optimised prompt** that instructs the LLM to preserve prices, dish names, and allergen info exactly.
+#### Default: Vision Ingestion (GPT-4o Vision API)
+Vision is the **default mode** for all PDFs. It renders each page as a high-resolution image and uses GPT-4o Vision to extract ALL content — including prices embedded in graphics, dietary markers, allergen tables, and designed layouts.
 
 ```bash
-# Explicit menu flag
-uv run ingest.py data/menu.pdf --menu --reingest
+# Default — vision mode (no flag needed)
+uv run ingest.py data/menu.pdf
 
-# Auto-detected by filename (keywords: menu, food, drink, price)
-uv run ingest.py "data/NOVEMBER NEWCASTLE MENU WEB VIEW.pdf" --reingest
-```
-
-**Without `--menu`** (generic documents):
-```
-"The section covers Indian street food starters..."  ← summarised, prices lost
+# Re-ingest with vision (force refresh)
+uv run ingest.py data/menu.pdf --reingest
 ```
 
-**With `--menu`** (price-preserving):
+**Vision extracts:**
 ```
-GOL GAPPA — £5.00: Crispy puri shells filled with spiced potato and chickpeas...
-SWEET POTATO FRIES — £4.50: Tossed in smoky gunpowder spice...
-HONEY CHILLI CHICKEN — £8.00: Crispy chicken in sweet and spicy honey chilli glaze...
+GOL GAPPA (vg) — £5: Crispy puri shells filled with spiced potato and chickpeas
+ONION BHAJI (vg) — £6.50: Crispy spiced onion fritters
+BEETROOT TIKKI (v)(gf) — £6: Crispy beetroot and potato patties
+Karnataka Highball — £10: Mango, lychee and nimbu sherbet
+Dear Delhi (mocktail) — £6.50: Coconut syrup, watermelon, pineapple, rose syrup
 ```
+
+#### Fallback: PageIndex Text Extraction (`--no-vision`)
+Use `--no-vision` for text-heavy documents (books, reports, policies) where speed matters more than graphic accuracy. Uses PageIndex LLM-based tree extraction.
+
+```bash
+# Text extraction mode (faster, less accurate for graphic PDFs)
+uv run ingest.py data/policy.pdf --no-vision
+
+# With menu-optimised prompt (only applies with --no-vision)
+uv run ingest.py data/menu.pdf --no-vision --menu
+```
+
+**Without vision** (generic documents):
+```
+"The section covers Indian street food starters..."  ← summarised, prices/dietary markers lost
+```
+
+#### Comparison
+
+| Feature | Vision (default) | Text (`--no-vision`) |
+|---------|-----------------|---------------------|
+| Prices in graphics | ✅ | ⚠️ Partial |
+| Dietary markers (v/vg/gf) | ✅ | ❌ |
+| Allergen tables | ✅ | ❌ |
+| Designed layouts | ✅ | ⚠️ |
+| Speed | ~10s/page | ~30s/page (LLM) |
+| Cost | ~$0.01/page | ~$0.05/page |
+| Best for | Menus, brochures, forms | Books, reports, policies |
 
 #### All Ingestion Options
 
