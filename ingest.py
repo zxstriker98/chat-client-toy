@@ -33,7 +33,7 @@ def file_hash(path: str) -> str:
     return h.hexdigest()
 
 
-def process_pdf_local(pdf_path: str, service: PageIndexService) -> dict:
+def process_pdf_local(pdf_path: str, service: PageIndexService, summary_prompt: str = None) -> dict:
     """
     Process a PDF using PageIndex library.
     Returns the tree structure.
@@ -41,6 +41,11 @@ def process_pdf_local(pdf_path: str, service: PageIndexService) -> dict:
     print(f"  Processing {Path(pdf_path).name}...")
     
     try:
+        # Temporarily attach custom prompt to service config if provided
+        if summary_prompt:
+            service.config_opts.summary_prompt_template = summary_prompt
+        elif hasattr(service.config_opts, 'summary_prompt_template'):
+            del service.config_opts.summary_prompt_template
         tree = service.process_document(pdf_path)
         print(f"  Tree generated successfully")
         return tree
@@ -102,12 +107,30 @@ def flatten_tree(nodes: list, ancestors: list = None, file_hash_val: str = "") -
     return chunks
 
 
+MENU_SUMMARY_PROMPT = """You are given raw text extracted from a restaurant menu PDF. Your task is to produce a structured summary that preserves ALL factual details.
+
+CRITICAL RULES:
+- ALWAYS preserve prices exactly as they appear (numbers next to dish names are prices in £)
+- ALWAYS preserve dish names and product names exactly
+- ALWAYS preserve allergen and dietary info (v=vegetarian, vg=vegan, GF=gluten free)
+- Format each menu item as: "DISH NAME — £price: description (dietary info)"
+- Numbers appearing after or near a dish name are prices (e.g. "GOL GAPPA | ... | 5" means £5)
+- If a price is genuinely not visible, write "price not listed"
+- Do NOT generalise — be specific and factual
+
+Raw Menu Text: {text}
+
+Return a structured factual summary with all dish names, prices and descriptions. Do not include any other text.
+"""
+
+
 def ingest_pdf(
     pdf_path: str,
     file_repo: FileRepository,
     chunk_repo: ChunkRepository,
     service: PageIndexService,
     reingest: bool = False,
+    summary_prompt: str = None,
 ) -> int:
     """
     Ingest a PDF using PageIndex processing.
@@ -142,7 +165,7 @@ def ingest_pdf(
     
     # Process PDF
     try:
-        tree = process_pdf_local(pdf_path, service)
+        tree = process_pdf_local(pdf_path, service, summary_prompt=summary_prompt)
     except Exception as e:
         print(f"  Processing failed: {e}")
         return 0
@@ -195,6 +218,7 @@ def main():
     parser.add_argument("--reingest", action="store_true", help="Re-ingest even if already processed")
     parser.add_argument("--clear", action="store_true", help="Clear database")
     parser.add_argument("--list", action="store_true", help="List ingested documents")
+    parser.add_argument("--menu", action="store_true", help="Use menu-optimised prompt that preserves prices and dish names")
     
     args = parser.parse_args()
     
@@ -240,12 +264,22 @@ def main():
         
         total = 0
         for pdf in args.files:
+            # Auto-detect menu PDFs by flag or filename keywords
+            is_menu = args.menu or any(
+                kw in Path(pdf).name.lower()
+                for kw in ["menu", "food", "drink", "price"]
+            )
+            summary_prompt = MENU_SUMMARY_PROMPT if is_menu else None
+            if is_menu:
+                print(f"  Using menu-optimised prompt for: {Path(pdf).name}")
+
             count = ingest_pdf(
                 pdf,
                 file_repo,
                 chunk_repo,
                 service,
-                reingest=args.reingest
+                reingest=args.reingest,
+                summary_prompt=summary_prompt,
             )
             total += count
         

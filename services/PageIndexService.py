@@ -14,12 +14,14 @@ from pageindex_lib.page_index import config, page_index_main
 class PageIndexService:
     """High-level wrapper around the local PageIndex library."""
 
-    def __init__(self, model: str = "gpt-4o-2024-11-20"):
+    def __init__(self, model: str = "gpt-4o-2024-11-20", summary_prompt_template: str = None):
         """
         Initialize PageIndexService with local PageIndex library.
         
         Args:
             model: LLM model to use for tree generation (default: gpt-4o-2024-11-20)
+            summary_prompt_template: Custom prompt for node summary generation.
+                Must contain {text} placeholder. Defaults to generic description prompt.
         """
         self.model = model
         self.config_opts = config(
@@ -32,6 +34,9 @@ class PageIndexService:
             if_add_doc_description="no",
             if_add_node_text="yes"   # Include raw page text so prices/details are preserved
         )
+        # Attach custom prompt template to config opts (optional)
+        if summary_prompt_template:
+            self.config_opts.summary_prompt_template = summary_prompt_template
 
     def process_document(self, file_path: str) -> dict:
         """
