@@ -94,6 +94,7 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient, ABC):
         """Send an image + text prompt to the vision-capable model and return text response.
 
         Uses chat.completions (not responses) because vision/image input requires it.
+        Uses a fresh event loop to avoid conflicts when called from sync context (e.g. ingest.py).
         """
         import asyncio
 
@@ -122,7 +123,13 @@ class AsyncOpenAICompatClient(AsyncBaseLLMClient, ABC):
             )
             return response.choices[0].message.content
 
-        return asyncio.get_event_loop().run_until_complete(_call())
+        # Use a fresh event loop to avoid "loop already running" errors
+        # when called from sync context (ingest.py)
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(_call())
+        finally:
+            loop.close()
 
     def _get_tools(self) -> list[OpenAIToolSchema] | None:
         if not self.tool_registry.tool_spec:
