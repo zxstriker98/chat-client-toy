@@ -1,0 +1,3 @@
+# This file ensures the data/ directory is tracked by git.
+# Actual data files (*.db, *.pdf) are ignored via .gitignore.
+# Place your PDF documents and SQLite databases here.
