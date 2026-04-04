@@ -1,5 +1,5 @@
 """
-PDFVisionExtractor — Extract structured data from PDF pages using GPT-4o Vision.
+PDFVisionExtractor — Extract structured data from PDF pages using a Vision-capable LLM.
 
 Use cases:
 - Allergen tables (image-based grids)
@@ -7,17 +7,20 @@ Use cases:
 - Any page where text extraction fails
 
 Usage:
-    extractor = PDFVisionExtractor()
+    # Default: creates an OpenAI client via ProviderFactory
+    extractor = PDFVisionExtractor(model="gpt-4o")
     result = extractor.extract_page(pdf_path, page_num=1, prompt=ALLERGEN_PROMPT)
-    print(result)  # Structured markdown table
+
+    # Custom provider client from ProviderFactory:
+    from providers.ProviderFactory import ProviderFactory
+    client = ProviderFactory.from_model("gpt-4o")
+    extractor = PDFVisionExtractor(model="gpt-4o", client=client)
 """
 
 import base64
-import os
 from pathlib import Path
 
 import pymupdf
-from openai import OpenAI
 
 # Constants for PDF processing and API calls
 DEFAULT_PDF_ZOOM = 2.0
@@ -39,17 +42,28 @@ Return ONLY the markdown table and dietary notes. No other text."""
 
 
 class PDFVisionExtractor:
-    """Extract structured data from PDF pages using GPT-4o Vision API."""
+    """Extract structured data from PDF pages using a Vision-capable LLM.
 
-    def __init__(self, model: str = "gpt-4o", zoom: float = DEFAULT_PDF_ZOOM):
+    Uses the existing provider adapter pattern via ProviderFactory.
+    Any provider that implements vision_query() can be used.
+    """
+
+    def __init__(
+        self,
+        model: str = "gpt-4o",
+        zoom: float = DEFAULT_PDF_ZOOM,
+        client=None,
+    ):
         """
         Args:
-            model: Vision-capable model to use (default: gpt-4o)
-            zoom: Page render zoom factor for clarity (default: 2x)
+            model: Vision-capable model identifier (default: gpt-4o)
+            zoom: Page render zoom factor for image clarity (default: 2x)
+            client: AsyncBaseLLMClient from ProviderFactory. Created automatically if not provided.
         """
+        from providers.ProviderFactory import ProviderFactory
         self.model = model
         self.zoom = zoom
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = client or ProviderFactory.from_model(model_name=model)
 
     def _render_page_as_base64(self, pdf_path: str, page_num: int) -> str:
         """Render a PDF page as a base64-encoded PNG image."""
@@ -85,32 +99,14 @@ class PDFVisionExtractor:
         prompt = prompt or ALLERGEN_PROMPT
         print(f"  Rendering page {page_num + 1} of {Path(pdf_path).name}...")
         img_b64 = self._render_page_as_base64(pdf_path, page_num)
-        print(f"  Sending to {self.model} Vision API...")
+        print(f"  Sending to {self.model} via {type(self.client).__name__}...")
 
-        response = self.client.chat.completions.create(
+        return self.client.vision_query(
+            image_b64=img_b64,
+            prompt=prompt,
             model=self.model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{img_b64}",
-                                "detail": "high"
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ]
-                }
-            ],
-            max_tokens=VISION_API_MAX_TOKENS
+            max_tokens=VISION_API_MAX_TOKENS,
         )
-
-        return response.choices[0].message.content
 
     def extract_all_pages(self, pdf_path: str, prompt: str = None) -> list[str]:
         """Extract structured data from all pages of a PDF."""
