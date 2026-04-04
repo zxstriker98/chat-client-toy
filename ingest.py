@@ -194,7 +194,12 @@ def ingest_pdf_vision(
 
     print(f"[{path.name}] — Vision mode")
 
+    from providers.ProviderFactory import ProviderFactory
     extractor = PDFVisionExtractor(model=vision_model)
+    provider_name = type(extractor.client).__name__
+    base_url = getattr(extractor.client.client, "base_url", "unknown")
+    print(f"  Vision provider: {provider_name} (model={vision_model}, base_url={base_url})")
+
     doc = pymupdf.open(pdf_path)
     num_pages = len(doc)
     extraction_prompt = prompt or VISION_EXTRACTION_PROMPT
@@ -336,7 +341,10 @@ def main():
     parser.add_argument("--list", action="store_true", help="List ingested documents")
     parser.add_argument("--menu", action="store_true", help="Use menu-optimised prompt that preserves prices and dish names (only applies with --no-vision)")
     parser.add_argument("--no-vision", action="store_true", help="Use PageIndex text extraction instead of GPT-4o Vision (faster but less accurate for graphic PDFs)")
-    parser.add_argument("--vision-model", type=str, default="gpt-4o", help="Vision model to use for PDF extraction (default: gpt-4o). Options: gpt-4o, gpt-4o-mini, gpt-4-turbo")
+    parser.add_argument("--vision-model", type=str, default="gpt-4o",
+                        help="Vision model for PDF extraction (default: gpt-4o). "
+                             "OpenAI: gpt-4o, gpt-4o-mini | "
+                             "Ollama (local, no API key): gemma4, llava:13b, minicpm-v")
     
     args = parser.parse_args()
     
