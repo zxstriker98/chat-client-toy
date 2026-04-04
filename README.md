@@ -123,21 +123,33 @@ uv run ingest.py data/menu.pdf --no-vision --menu
 #### Choosing a Vision Model
 
 ```bash
-# Default: gpt-4o (best quality)
+# Default: gpt-4o (best quality, requires OPENAI_API_KEY)
 uv run ingest.py data/menu.pdf
 
-# Faster + cheaper: gpt-4o-mini (good for simple text-heavy PDFs)
+# Faster + cheaper OpenAI option
 uv run ingest.py data/menu.pdf --vision-model gpt-4o-mini
 
-# High quality alternative
-uv run ingest.py data/menu.pdf --vision-model gpt-4-turbo
+# Local Ollama models (FREE, no API key needed, requires Ollama running)
+uv run ingest.py data/menu.pdf --vision-model gemma4
+uv run ingest.py data/menu.pdf --vision-model llava:13b
+uv run ingest.py data/menu.pdf --vision-model minicpm-v
 ```
 
-| Model | Quality | Speed | Cost |
-|-------|---------|-------|------|
-| `gpt-4o` (default) | ⭐⭐⭐⭐⭐ | Medium | ~$0.01/page |
-| `gpt-4o-mini` | ⭐⭐⭐⭐ | Fast | ~$0.001/page |
-| `gpt-4-turbo` | ⭐⭐⭐⭐⭐ | Medium | ~$0.02/page |
+The provider is auto-detected from the model name — same routing as the main chat client:
+
+| Model | Provider | API Key | Quality | Cost |
+|-------|----------|---------|---------|------|
+| `gpt-4o` (default) | OpenAI | `OPENAI_API_KEY` | ⭐⭐⭐⭐⭐ | ~$0.01/page |
+| `gpt-4o-mini` | OpenAI | `OPENAI_API_KEY` | ⭐⭐⭐⭐ | ~$0.001/page |
+| `gemma4` | Ollama (local) | None ✅ | ⭐⭐⭐⭐ | Free |
+| `llava:13b` | Ollama (local) | None ✅ | ⭐⭐⭐⭐ | Free |
+| `minicpm-v` | Ollama (local) | None ✅ | ⭐⭐⭐ | Free |
+
+> 💡 The ingestion log will tell you exactly which provider is being used:
+> ```
+> [menu.pdf] — Vision mode
+> Vision provider: AsyncOllamaClient (model=gemma4, base_url=http://localhost:11434/v1)
+> ```
 
 #### All Ingestion Options
 
